@@ -1,0 +1,20 @@
+{
+"urlSpoutParallel": 1,
+"resolveBoltParallel": 3,
+"grabBoltParallel": 3,
+"grabLimit": 3,
+"cmd": "storm jar Video.jar com.persist.GrabThread ",
+"zks": "192.168.0.189:2181",
+"topic": "topic-capture-image",
+"zkRoot": "/usr/local/kafka_2.11-0.10.0/pyleus-kafka-offsets/video",
+"id": "kafka-video",
+"brokerList": "",
+ "sendTopic": "",
+"zkServers": ["192.168.0.189"],
+"zkPort": 2181,
+"redisHost": "develop.finalshares.com",
+"redisPort": 6379,
+"redisPassword": "redis.2016@develop.finalshares.com",
+"nameFormat": "frame-%05d-%d.png",
+"log": "video_log"
+}

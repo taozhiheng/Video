@@ -1,0 +1,12 @@
+1469154810136 [Test]:	/home/taozhiheng/IdeaProjects/Video/.
+1469154825115 [Test]:	Input #0, flv, from 'rtmp://120.26.103.237:1935/myapp/test1':
+1469154825115 [Test]:	  Metadata:
+1469154825115 [Test]:	    Server          : NGINX RTMP (github.com/arut/nginx-rtmp-module)
+1469154825115 [Test]:	    displayWidth    : 480
+1469154825115 [Test]:	    displayHeight   : 272
+1469154825115 [Test]:	    fps             : 15
+1469154825115 [Test]:	    profile         : 
+1469154825115 [Test]:	    level           : 
+1469154825115 [Test]:	  Duration: 00:00:00.00, start: 3583.559000, bitrate: N/A
+1469154825115 [Test]:	    Stream #0:0: Audio: aac (LC), 44100 Hz, mono, fltp, 68 kb/s
+1469154830204 [Test]:	[flv @ 0x7f6bbc0acdc0] video stream discovered after head already parsed

@@ -1,0 +1,157 @@
+##About Dependencies
+
+VideoGrab jars:
+artoolkitplus-2.3.1-1.2-linux-x86_64.jar
+artoolkitplus-2.3.1-1.2.jar
+curator-client-2.5.0.jar
+ffmpeg-3.0.2-1.2-linux-x86_64.jar
+ffmpeg-3.0.2-1.2.jar
+flandmark-1.07-1.2-linux-x86_64.jar
+flandmark-1.07-1.2.jar
+flycapture-2.9.3.43-1.2-linux-x86_64.jar
+flycapture-2.9.3.43-1.2.jar
+gson-2.1.jar
+guava-16.0.1.jar
+hadoop-auth-2.7.2.jar
+hadoop-common-2.7.2.jar
+hadoop-hdfs-2.7.2.jar
+javacpp-1.2.jar
+javacv-1.2.jar
+kafka-clients-0.10.0.0.jar
+kafka_2.11-0.10.0.0.jar
+libdc1394-2.2.4-1.2-linux-x86_64.jar
+libdc1394-2.2.4-1.2.jar
+libfreenect-0.5.3-1.2-linux-x86_64.jar
+libfreenect-0.5.3-1.2.jar
+opencv-3.1.0-1.2-linux-x86_64.jar
+opencv-3.1.0-1.2.jar
+scala-library-2.11.8.jar
+storm-kafka-0.9.6.jar
+videoinput-0.200-1.2-linux-x86_64.jar
+videoinput-0.200-1.2.jar
+zookeeper-3.4.6.jar
+
+VideoWatcher jars:
+***commons-logging-1.1.3.jar****
+commons-pool2-2.4.2.jar
+curator-client-2.5.0.jar
+curator-framework-2.5.0.jar
+gson-2.7.jar
+guava-12.0.1.jar
+hadoop-auth-2.5.1.jar
+hbase-client-2.5.1.jar
+jedis-2.8.1.jar
+kafka-clients-0.10.0.0.jar
+kafka_2.11-0.10.0.0.jar
+metrics-cr-2.2.0.jar
+scala-library-2.11.8.jar
+storm-kafka-0.9.6.jar
+zookeeper-3.4.6.jar
+
+compose jars:
+artoolkitplus-2.3.1-1.2-linux-x86_64.jar
+artoolkitplus-2.3.1-1.2.jar
+commons-pool2-2.4.2.jar
+curator-client-2.5.0.jar
+curator-framework-2.5.0.jar
+ffmpeg-3.0.2-1.2-linux-x86_64.jar
+ffmpeg-3.0.2-1.2.jar
+flandmark-1.07-1.2-linux-x86_64.jar
+flandmark-1.07-1.2.jar
+flycapture-2.9.3.43-1.2-linux-x86_64.jar
+flycapture-2.9.3.43-1.2.jar
+gson-2.1.jar
+guava-16.0.1.jar
+hadoop-auth-2.7.2.jar
+hadoop-common-2.7.2.jar
+hadoop-hdfs-2.7.2.jar
+hbase-client-2.5.1.jar
+javacpp-1.2.jar
+javacv-1.2.jar
+jedis-2.8.1.jar
+kafka-clients-0.10.0.0.jar
+kafka_2.11-0.10.0.0.jar
+libdc1394-2.2.4-1.2-linux-x86_64.jar
+libdc1394-2.2.4-1.2.jar
+libfreenect-0.5.3-1.2-linux-x86_64.jar
+libfreenect-0.5.3-1.2.jar
+metrics-cr-2.2.0.jar
+opencv-3.1.0-1.2-linux-x86_64.jar
+opencv-3.1.0-1.2.jar
+scala-library-2.11.8.jar
+storm-kafka-0.9.6.jar
+videoinput-0.200-1.2-linux-x86_64.jar
+videoinput-0.200-1.2.jar
+zookeeper-3.4.6.jar
+
+#About Run
+install storm first, run the project with storm like what the run.sh does.
+
+#About Implementation
+Entrance:
+VideoGrabber: grab video or stop grabbing video
+
+		shuffle		fields
+	KafaSpout	ResolveBolt	GrabBolt
+	Spout1 		Bolt1		Bolt1	
+	Spout2		Bolt2		Bolt2
+	Spout3		Bolt3		Bolt3
+	...		...		...
+
+VideoAnalyzer: analysis picture
+
+		shuffle		shuffle		shuffle
+	KafkaSpout	ResultBolt	NotifierBolt	RecorederBolt
+	Spout1		Bolt1		Bolt1		Bolt1
+	Spout2		Bolt2		Bolt2		Bolt2
+	Spout3		Bolt3		Bolt3		Bolt3
+	...		...		...		...
+
+GrabThread: grab video in a child thread, and watch it in another child thread
+
+	GrabThread: execute grabbing tasks and provide interface to control itself
+	ListenThread: receive commands to control GrabThread
+
+
+#About Configuration
+
+grab configuration
+
+	"urlSpoutParallel": 1,					KafkaSpout parallelism
+	"resolveBoltParallel": 3,				ResolveBolt parallelism
+	"grabBoltParallel": 3,					GrabBolt parallelism
+	"grabLimit": 3,						max grab process limit
+	"cmd": "storm jar Video.jar com.persist.GrabThread ",	command to invoke GrabThread
+	"zks":"192.168.0.189:2181",				zookeeper hostname or ip
+	"topic":"topic-capture-image",				kafka topic
+	"zkRoot":"/usr/local/zookeeper-3.4.8/root",		zookeeper root dir
+	"id":"kafka-video",					kafka consumer id
+	"zkServers":["192.168.0.189"],				zookeeper servers' hostname or ip
+	"zkPort":2181,						zookeeper client port
+	"log":"video_log"					the file path to generate log file
+
+
+analysis configuration
+
+	"keySpoutParallel": 1,					KafkaSpout parallelism
+	"resultBoltParallel": 3,				ResultBolt parallelism
+	"notifierBoltParallel": 3,				NotifierBolt parallelism
+	"recorderBoltParallel": 3,				RecorderBolt parallelism
+	"zks":"192.168.0.189:2181",				zookeeper hostname or ip
+	"topic":"topic-capture-image",				kafka topic
+	"zkRoot":"/usr/local/zookeeper-3.4.8/root",		zookeeper root dir
+	"id":"kafka-image",					kafka consumer id
+	"zkServers":["192.168.0.189"],				zookeeper servers' hostname or ip
+	"zkPort":2181,						zookeeper client port
+	"redisHost":"develop.finalshares.com",			redis hostname or ip
+	"redisPort":6379,					redis client port
+	"redisPassword":"redis.2016@develop.finalshares.com",	redis password
+	"redisChannels": ["https://www.baidu.com/"],		redis channels to publish messages
+	"hbaseQuorum": "192.168.0.189",				hbase quorum
+	"hbasePort": 2181,					hbase(zookeeper) client port 
+	"hbaseMaster": "develop.finalshares.com",		hbase master
+	"hbaseAuth": "redis.2016@develop.finalshares.com",	hbase authorization
+	"hbaseTable": "good",					hbase table name
+	"hbaseColumnFamily": "info",				hbase table column family
+	"hbaseColumns": ["video_id", "time_stamp", "ok", "percent"], 	hbase tablecolumns
+	"log":"image_log"					the file path to generate log file

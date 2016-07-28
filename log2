@@ -1,0 +1,7 @@
+1469156452906 [PictureNotifierImpl]:	redis.clients.jedis.JedisPool@587b9f62
+1469156452966 [PictureNotifierImpl]:	notify:before start
+1469156461023 [PictureNotifierImpl]:	notify:finish starting
+1469156461062 [PictureNotifierImpl]:	notify:start grab frame 0
+1469156506654 [PictureNotifierImpl]:	notify:finish grabbing frame 0
+1469156507234 [PictureNotifierImpl]:	notify:start write:picture-00000.png
+1469159251302 [Grab]:	Receive:null

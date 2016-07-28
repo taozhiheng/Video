@@ -1,0 +1,52 @@
+Manifest-Version: 1.0
+Class-Path: ring-devel-0.3.11.jar tools.macro-0.1.0.jar commons-pool2-
+ 2.4.2.jar log4j-over-slf4j-1.6.6.jar jackson-mapper-asl-1.9.13.jar ar
+ toolkitplus-2.3.1-1.2.jar commons-codec-1.6.jar libfreenect-0.5.3-1.2
+ -linux-x86_64.jar tools.cli-0.2.4.jar scala-parser-combinators_2.11-1
+ .0.4.jar curator-recipes-2.7.1.jar hadoop-yarn-common-2.5.1.jar openc
+ v-3.1.0-1.2.jar javacv-1.2.jar tools.logging-0.2.3.jar commons-math3-
+ 3.1.1.jar curator-framework-2.5.0.jar javacpp-1.2.1.jar jedis-2.8.1.j
+ ar jopt-simple-4.9.jar slf4j-log4j12-1.7.21.jar commons-beanutils-cor
+ e-1.8.0.jar hadoop-auth-2.5.1.jar joni-2.1.2.jar hadoop-annotations-2
+ .7.2.jar clj-stacktrace-0.2.2.jar commons-digester-1.8.jar hadoop-hdf
+ s-2.7.2.jar ffmpeg-3.0.2-1.2.jar junit-4.12.jar scala-library-2.11.8.
+ jar api-asn1-api-1.0.0-M20.jar htrace-core-3.1.0-incubating.jar refle
+ ctasm-1.07-shaded.jar xml-apis-1.3.04.jar commons-compress-1.4.1.jar 
+ jersey-json-1.9.jar metrics-core-2.2.0.jar videoinput-0.200-1.2.jar x
+ z-1.0.jar chill-java-0.3.5.jar findbugs-annotations-1.3.9-1.jar hbase
+ -client-1.2.1.jar hadoop-yarn-api-2.5.1.jar commons-logging-1.1.3.jar
+  tools.jar curator-client-2.7.1.jar hamcrest-core-1.3.jar artoolkitpl
+ us-2.3.1-1.2-linux-x86_64.jar hadoop-common-2.7.2.jar flandmark-1.07-
+ 1.2-linux-x86_64.jar jackson-jaxrs-1.8.3.jar hbase-common-1.2.1.jar j
+ sr305-3.0.0.jar httpcore-4.1.2.jar flandmark-1.07-1.2.jar logback-cla
+ ssic-1.0.13.jar commons-fileupload-1.2.1.jar kafka-clients-0.10.0.0.j
+ ar jackson-core-asl-1.9.13.jar clojure-1.5.1.jar guava-12.0.1.jar com
+ mons-collections-3.2.2.jar objenesis-1.2.jar jettison-1.1.jar flycapt
+ ure-2.9.3.43-1.2-linux-x86_64.jar libdc1394-2.2.4-1.2-linux-x86_64.ja
+ r xmlenc-0.52.jar commons-daemon-1.0.13.jar storm-core-0.9.6.jar jgra
+ pht-core-0.9.0.jar api-util-1.0.0-M20.jar commons-io-2.4.jar commons-
+ exec-1.1.jar ring-servlet-0.3.11.jar jline-2.11.jar apacheds-kerberos
+ -codec-2.0.0-M15.jar paranamer-2.3.jar protobuf-java-2.5.0.jar clout-
+ 1.0.1.jar jersey-core-1.9.jar lz4-1.3.0.jar hbase-annotations-1.2.1.j
+ ar slf4j-api-1.7.5.jar kafka_2.11-0.10.0.0.jar jackson-xc-1.8.3.jar f
+ lycapture-2.9.3.43-1.2.jar jaxb-api-2.2.2.jar compojure-1.1.3.jar mat
+ h.numeric-tower-0.0.1.jar servlet-api-2.5.jar disruptor-2.10.4.jar ha
+ doop-mapreduce-client-core-2.5.1.jar avro-1.7.4.jar jets3t-0.9.0.jar 
+ leveldbjni-all-1.8.jar jcodings-1.0.8.jar libfreenect-0.5.3-1.2.jar n
+ etty-all-4.0.23.Final.jar hiccup-0.3.6.jar core.incubator-0.1.0.jar c
+ ommons-httpclient-3.1.jar log4j-1.2.17.jar json-simple-1.1.jar httpcl
+ ient-4.2.5.jar ring-core-1.1.5.jar minlog-1.2.jar carbonite-1.4.0.jar
+  commons-lang-2.5.jar ffmpeg-3.0.2-1.2-linux-x86_64.jar hbase-protoco
+ l-1.2.1.jar clj-time-0.4.1.jar jetty-util-6.1.26.jar stax-api-1.0-2.j
+ ar netty-3.6.2.Final.jar jersey-server-1.9.jar zookeeper-3.4.6.jar kr
+ yo-2.21.jar commons-cli-1.2.jar jsp-api-2.1.jar jsch-0.1.42.jar openc
+ v-3.1.0-1.2-linux-x86_64.jar logback-core-1.0.13.jar apacheds-i18n-2.
+ 0.0-M15.jar jetty-6.1.26.jar storm-kafka-0.9.6.jar joda-time-2.0.jar 
+ commons-configuration-1.6.jar ring-jetty-adapter-0.3.11.jar java-xmlb
+ uilder-0.4.jar commons-beanutils-1.7.0.jar activation-1.1.jar zkclien
+ t-0.8.jar snappy-java-1.1.2.4.jar videoinput-0.200-1.2-linux-x86_64.j
+ ar libdc1394-2.2.4-1.2.jar xercesImpl-2.9.1.jar jaxb-impl-2.2.3-1.jar
+  snakeyaml-1.11.jar commons-net-3.1.jar gson-2.7.jar asm-4.0.jar asm-
+ 3.1.jar
+Main-Class: com.persist.GrabThread
+
