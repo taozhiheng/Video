@@ -60,6 +60,7 @@ public class VideoAnalyzer {
         }
 
         //construct calculator and notifier to deal with msg
+        //the instance should be a CalculatorImpl instance
         IPictureCalculator calculator = new PictureCalculatorImpl(
                 baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
         IPictureNotifier notifier = new PictureNotifierImpl(

@@ -12,6 +12,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by zhiheng on 2016/7/5.
@@ -19,6 +21,8 @@ import java.io.InputStream;
  * before starting working, the method prepare() must be invoked
  *
  * read image data from redis, and judge whether the image is ok
+ *
+ * this class is just for test
  */
 public class PictureCalculatorImpl implements IPictureCalculator {
 
@@ -65,18 +69,21 @@ public class PictureCalculatorImpl implements IPictureCalculator {
         initJedis();
     }
 
-    public PictureResult calculateImage(PictureKey pictureKey) {
+    public List<PictureResult> calculateImage(PictureKey pictureKey) {
+        List<PictureResult> list = new ArrayList<PictureResult>(1);
+        list.add(new PictureResult(pictureKey, false, 0.75f));
+        return list;
         //read image data from redis
-        if(mJedis == null) {
-            initJedis();
-        }
-        String data = mJedis.get(URL);
-        byte[] bytes = base64Decode(data);
-        if(bytes == null)
-            return new PictureResult(pictureKey, false, -1);
-        //calculate
-        InputStream is = new ByteArrayInputStream(bytes);
-        BufferedImage image = null;
+//        if(mJedis == null) {
+//            initJedis();
+//        }
+//        String data = mJedis.get(URL);
+//        byte[] bytes = base64Decode(data);
+//        if(bytes == null)
+//            return new PictureResult(pictureKey, false, -1);
+//        //calculate
+//        InputStream is = new ByteArrayInputStream(bytes);
+//        BufferedImage image = null;
 //        try {
 //            image = ImageIO.read(is);
 //        } catch (IOException e) {
@@ -84,23 +91,23 @@ public class PictureCalculatorImpl implements IPictureCalculator {
 //        }
 //        if(image == null)
 //            return new PictureResult(pictureKey, false, -1);
-        image = new BufferedImage(1080, 720, BufferedImage.TYPE_3BYTE_BGR);
-
-        int width = image.getWidth();
-        int height = image.getHeight();
-        int minX = image.getMinX();
-        int minY = image.getMinY();
-        int[] rgb = new int[3];
-        for (int i = minX; i < width; i++) {
-            for (int j = minY; j < height; j++) {
-                int pixel = image.getRGB(i, j);
-                rgb[0] = (pixel & 0xff0000) >> 16;
-                rgb[1] = (pixel & 0xff00) >> 8;
-                rgb[2] = (pixel & 0xff);
-            }
-        }
-        Logger.log(TAG, "calculate "+pictureKey.url);
-        return new PictureResult(pictureKey, (rgb[0] > rgb[1]) && (rgb[1] < rgb[2]), 0.98f);
+//        image = new BufferedImage(1080, 720, BufferedImage.TYPE_3BYTE_BGR);
+//
+//        int width = image.getWidth();
+//        int height = image.getHeight();
+//        int minX = image.getMinX();
+//        int minY = image.getMinY();
+//        int[] rgb = new int[3];
+//        for (int i = minX; i < width; i++) {
+//            for (int j = minY; j < height; j++) {
+//                int pixel = image.getRGB(i, j);
+//                rgb[0] = (pixel & 0xff0000) >> 16;
+//                rgb[1] = (pixel & 0xff00) >> 8;
+//                rgb[2] = (pixel & 0xff);
+//            }
+//        }
+//        Logger.log(TAG, "calculate "+pictureKey.url);
+//        return new PictureResult(pictureKey, (rgb[0] > rgb[1]) && (rgb[1] < rgb[2]), 0.98f);
     }
 
     public static byte[] base64Decode(String src)

@@ -77,7 +77,11 @@ public class HDFSHelper {
      * */
     public boolean upload(InputStream is, String remote)
     {
-        String dst = ip +File.separator+ remote;
+        String dst;
+        if(ip != null)
+            dst = ip +File.separator+ remote;
+        else
+            dst = remote;
         Configuration conf = new Configuration();
         try
         {
@@ -116,10 +120,16 @@ public class HDFSHelper {
     {
         if(file.exists() && file.isFile()) {
             try {
-                return download(new FileOutputStream(file), remote);
+                OutputStream os = new FileOutputStream(file);
+                boolean res =  download(os, remote);
+                os.close();
+                return res;
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
                 return false;
+            } catch (IOException e)
+            {
+                e.printStackTrace();
             }
         }
         return false;
@@ -132,7 +142,11 @@ public class HDFSHelper {
      * */
     public boolean download(OutputStream os, String remote)
     {
-        String dst = ip +File.separator+ remote;
+        String dst;
+        if(ip != null)
+            dst = ip +File.separator+ remote;
+        else
+            dst = remote;
         Configuration conf = new Configuration();
         try {
             FileSystem fs = FileSystem.get(URI.create(dst), conf);
@@ -143,7 +157,6 @@ public class HDFSHelper {
                 os.write(ioBuffer, 0, readLen);
                 readLen = fsDataInputStream.read(ioBuffer);
             }
-            os.close();
             fsDataInputStream.close();
             fs.close();
             return true;
@@ -161,7 +174,11 @@ public class HDFSHelper {
      * */
     private  boolean delete(String remote)
     {
-        String dst = ip +File.separator+remote;
+        String dst;
+        if(ip != null)
+            dst = ip +File.separator+ remote;
+        else
+            dst = remote;
         Configuration conf = new Configuration();
         FileSystem fs;
         try {

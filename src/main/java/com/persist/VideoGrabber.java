@@ -11,14 +11,11 @@ import com.google.gson.JsonSyntaxException;
 import com.persist.bean.grab.GrabConfig;
 import com.persist.bolts.grab.GrabBolt;
 import com.persist.bolts.grab.ResolveBolt;
-import com.persist.spouts.MyKafkaSpout;
 import com.persist.util.helper.FileHelper;
 import com.persist.util.helper.Logger;
 import com.persist.util.tool.grab.GrabberImpl;
 import com.persist.util.tool.grab.IGrabber;
 import storm.kafka.*;
-import sun.rmi.runtime.Log;
-
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.util.Arrays;

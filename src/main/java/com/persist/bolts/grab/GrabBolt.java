@@ -49,7 +49,7 @@ public class GrabBolt extends BaseRichBolt {
 
     private String mSendTopic;
 
-    private IVideoNotifier mNotifier;
+//    private IVideoNotifier mNotifier;
 
 
 
@@ -72,17 +72,17 @@ public class GrabBolt extends BaseRichBolt {
     @Override
     public void cleanup() {
         super.cleanup();
-        mNotifier.stop();
+//        mNotifier.stop();
         Logger.close();
     }
 
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         Logger.log(TAG, "prepare");
         mCollector = outputCollector;
-        mNotifier = new VideoNotifierImpl(
-                "develop.finalshares.com", 6379,
-                "redis.2016@develop.finalshares.com", new String[]{"rtmp://120.26.103.237:1935/myapp/test1"});
-        mNotifier.prepare();
+//        mNotifier = new VideoNotifierImpl(
+//                "develop.finalshares.com", 6379,
+//                "redis.2016@develop.finalshares.com", new String[]{"rtmp://120.26.103.237:1935/myapp/test1"});
+//        mNotifier.prepare();
         mProcessMap = new HashMap<String, Process>(mGrabLimit);
         try {
             Logger.setOutput(new FileOutputStream(TAG, true));
@@ -102,7 +102,7 @@ public class GrabBolt extends BaseRichBolt {
         if(videoInfo == null)
             return;
         Process process = null;
-        mNotifier.notify("Receive command:"+videoInfo.cmd);
+//        mNotifier.notify("Receive command:"+videoInfo.cmd);
         Logger.log(TAG, "execute: "+videoInfo.cmd+","+videoInfo.url+","+videoInfo.dir);
         //add
         if(videoInfo.cmd.equals(VideoInfo.ADD))
@@ -126,7 +126,7 @@ public class GrabBolt extends BaseRichBolt {
             {
                 mProcessMap.put(videoInfo.url, process);
                 mCurrentGrab++;
-                mNotifier.notify(" start process:"+process);
+//                mNotifier.notify(" start process:"+process);
             }
         }
         //delete
@@ -137,7 +137,7 @@ public class GrabBolt extends BaseRichBolt {
                 ProcessHelper.sendMessage(process, VideoInfo.DEL);
                 ProcessHelper.finishMessage(process);
                 process.destroy();
-                mNotifier.notify(" destroy process:"+process);
+//                mNotifier.notify(" destroy process:"+process);
             }
         }
         //pause
@@ -147,7 +147,7 @@ public class GrabBolt extends BaseRichBolt {
             if(process != null)
             {
                 ProcessHelper.sendMessage(process, VideoInfo.PAUSE);
-                mNotifier.notify(" pause process:"+process);
+//                mNotifier.notify(" pause process:"+process);
 
             }
         }
@@ -158,7 +158,7 @@ public class GrabBolt extends BaseRichBolt {
             if(process != null)
             {
                 ProcessHelper.sendMessage(process, VideoInfo.CONTINUE);
-                mNotifier.notify(" continue process:"+process);
+//                mNotifier.notify(" continue process:"+process);
             }
         }
         Logger.log(TAG, "child process num: "+mCurrentGrab);

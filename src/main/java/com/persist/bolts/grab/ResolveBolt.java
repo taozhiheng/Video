@@ -27,17 +27,17 @@ public class ResolveBolt extends BaseRichBolt {
     private final static String TAG = "ResolveBolt";
     private Gson mGson;
     private OutputCollector mCollector;
-    private IVideoNotifier mNotifier;
+//    private IVideoNotifier mNotifier;
 
 
 
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         mGson = new Gson();
         mCollector = outputCollector;
-        mNotifier = new VideoNotifierImpl(
-                "develop.finalshares.com", 6379,
-                "redis.2016@develop.finalshares.com", new String[]{"rtmp://120.26.103.237:1935/myapp/test1"});
-        mNotifier.prepare();
+//        mNotifier = new VideoNotifierImpl(
+//                "develop.finalshares.com", 6379,
+//                "redis.2016@develop.finalshares.com", new String[]{"rtmp://120.26.103.237:1935/myapp/test1"});
+//        mNotifier.prepare();
         try {
             Logger.setOutput(new FileOutputStream(TAG, true));
         } catch (FileNotFoundException e) {
@@ -48,7 +48,7 @@ public class ResolveBolt extends BaseRichBolt {
 
     public void execute(Tuple tuple) {
         String data = (String) tuple.getValue(0);
-        mNotifier.notify("Receive source:"+data);
+//        mNotifier.notify("Receive source:"+data);
         Logger.log(TAG, "execute: "+data);
         String url = null;
         VideoInfo videoInfo = new VideoInfo();

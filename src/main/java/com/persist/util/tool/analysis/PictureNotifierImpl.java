@@ -68,8 +68,7 @@ public class PictureNotifierImpl implements IPictureNotifier {
         if(mGson == null)
             initGson();
         String msg = mGson.toJson(result);
-//        String msg = result.description.url;
-	    mJedis.publish(result.description.video_id, msg);
+        mJedis.publish(result.description.video_id, msg);
 //        if(channels != null) {
 //            for (String channel : channels)
 //            {

@@ -10,11 +10,13 @@ import backtype.storm.tuple.Values;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.PictureKey;
+import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.Logger;
 import com.persist.util.tool.analysis.IPictureCalculator;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -66,7 +68,12 @@ public class PictureResultBolt extends BaseRichBolt {
         } catch (JsonSyntaxException e) {
             e.printStackTrace();
         }
-        mCollector.emit(new Values(mCalculator.calculateImage(pictureKey)));
+        List<PictureResult> list = mCalculator.calculateImage(pictureKey);
+        if(list != null && list.size() > 0)
+        {
+            for(PictureResult result : list)
+                mCollector.emit(new Values(result));
+        }
         mCollector.ack(tuple);
     }
 
