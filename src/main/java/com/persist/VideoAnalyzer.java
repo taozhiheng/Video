@@ -34,6 +34,14 @@ public class VideoAnalyzer {
 
     public static void main(String[] args) throws Exception{
 
+        //reset log output stream to log file
+        try {
+            Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Logger.setDebug(false);
+        }
+
         //default config path
         String configPath = "analyzer_config.json";
         if(args.length > 0)
@@ -51,13 +59,7 @@ public class VideoAnalyzer {
             e.printStackTrace();
         }
 
-        //reset log output stream to log file
-        try {
-            Logger.setOutput(new FileOutputStream(baseConfig.log, true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
+        Logger.log(TAG, "configPath:"+configPath);
 
         //construct calculator and notifier to deal with msg
         //the instance should be a CalculatorImpl instance

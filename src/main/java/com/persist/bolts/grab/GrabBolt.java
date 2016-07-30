@@ -85,7 +85,7 @@ public class GrabBolt extends BaseRichBolt {
 //        mNotifier.prepare();
         mProcessMap = new HashMap<String, Process>(mGrabLimit);
         try {
-            Logger.setOutput(new FileOutputStream(TAG, true));
+            Logger.setOutput(new FileOutputStream("VideoGrabber", true));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             Logger.setDebug(false);
@@ -103,7 +103,7 @@ public class GrabBolt extends BaseRichBolt {
             return;
         Process process = null;
 //        mNotifier.notify("Receive command:"+videoInfo.cmd);
-        Logger.log(TAG, "execute: "+videoInfo.cmd+","+videoInfo.url+","+videoInfo.dir);
+        Logger.log(TAG, "grab data: "+videoInfo.cmd+","+videoInfo.url+","+videoInfo.dir);
         //add
         if(videoInfo.cmd.equals(VideoInfo.ADD))
         {
@@ -127,6 +127,7 @@ public class GrabBolt extends BaseRichBolt {
                 mProcessMap.put(videoInfo.url, process);
                 mCurrentGrab++;
 //                mNotifier.notify(" start process:"+process);
+                Logger.log(TAG, "start process:"+process);
             }
         }
         //delete
@@ -138,6 +139,7 @@ public class GrabBolt extends BaseRichBolt {
                 ProcessHelper.finishMessage(process);
                 process.destroy();
 //                mNotifier.notify(" destroy process:"+process);
+                Logger.log(TAG, "destroy process:"+process);
             }
         }
         //pause
@@ -148,7 +150,7 @@ public class GrabBolt extends BaseRichBolt {
             {
                 ProcessHelper.sendMessage(process, VideoInfo.PAUSE);
 //                mNotifier.notify(" pause process:"+process);
-
+                Logger.log(TAG, "pause process:"+process);
             }
         }
         //continue
@@ -159,9 +161,10 @@ public class GrabBolt extends BaseRichBolt {
             {
                 ProcessHelper.sendMessage(process, VideoInfo.CONTINUE);
 //                mNotifier.notify(" continue process:"+process);
+                Logger.log(TAG, "continue process:"+process);
             }
         }
-        Logger.log(TAG, "child process num: "+mCurrentGrab);
+        Logger.log(TAG, "child process num: "+mCurrentGrab+"/"+mGrabLimit);
         mCollector.ack(tuple);
     }
 

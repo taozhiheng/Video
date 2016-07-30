@@ -38,10 +38,10 @@ public class VideoNotifierImpl implements IVideoNotifier {
             JedisPoolConfig config = new JedisPoolConfig();
             pool = new JedisPool(config, host, port, 3000, password);
             mJedis = pool.getResource();
-            Logger.log(TAG, pool.toString());
+//            Logger.log(TAG, pool.toString());
         } catch (Exception e) {
             e.printStackTrace();
-            Logger.log(TAG, "redis exception");
+//            Logger.log(TAG, "redis exception");
 
         }
     }
@@ -67,7 +67,7 @@ public class VideoNotifierImpl implements IVideoNotifier {
                 mJedis.publish(channel, msg);
             }
         }
-        Logger.log(TAG, "notify:" + msg);
+//        Logger.log(TAG, "notify:" + msg);
     }
 
     public void stop() {

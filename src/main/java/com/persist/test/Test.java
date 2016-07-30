@@ -1,4 +1,4 @@
-package com.persist;
+package com.persist.test;
 
 import com.google.gson.Gson;
 import com.persist.bean.analysis.AnalysisConfig;

@@ -16,6 +16,8 @@ import com.persist.util.tool.analysis.IPictureCalculator;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
 
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +55,12 @@ public class PictureResultBolt extends BaseRichBolt {
         this.mGson = new Gson();
         Logger.log(TAG, "prepare PictureResultBolt");
         mCalculator.prepare();
+        try {
+            Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Logger.setDebug(false);
+        }
     }
 
     /**
@@ -61,18 +69,22 @@ public class PictureResultBolt extends BaseRichBolt {
      * */
     public void execute(Tuple tuple) {
         String data = tuple.getString(0);
+        Logger.log(TAG, "resolve result:"+data);
         PictureKey pictureKey = new PictureKey();
         try {
-
             pictureKey = mGson.fromJson(data, PictureKey.class);
         } catch (JsonSyntaxException e) {
             e.printStackTrace();
+            Logger.log(TAG, "JsonSyntaxException:"+e.getMessage());
         }
         List<PictureResult> list = mCalculator.calculateImage(pictureKey);
         if(list != null && list.size() > 0)
         {
             for(PictureResult result : list)
+            {
                 mCollector.emit(new Values(result));
+                Logger.log(TAG, "emit result:"+mGson.toJson(result));
+            }
         }
         mCollector.ack(tuple);
     }

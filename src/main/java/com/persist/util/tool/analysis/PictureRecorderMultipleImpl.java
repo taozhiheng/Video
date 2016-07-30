@@ -101,7 +101,6 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
                 mHelper.addRow(time_table_name, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,
                                 String.valueOf(result.ok), String.valueOf(result.percent)});
-
                 ok = true;
 
             } catch (Exception e) {
@@ -113,7 +112,8 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
                 + result.description.url + ", "
                 + result.description.video_id + ", "
                 + result.ok + ", "
-                + result.percent);
+                + result.percent
+                + " status:"+ok);
         return ok;
     }
 

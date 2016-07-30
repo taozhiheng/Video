@@ -56,7 +56,9 @@ public class GrabThread extends Thread{
         mImageConverter = new Java2DFrameConverter();
         mNotifier = notifier;
         mTopic = topic;
-        mProducer = new KafkaNewProducer(brokerList);
+        //brokerList: ip:port,ip:port...
+        if(brokerList != null && brokerList.length() > 2)
+            mProducer = new KafkaNewProducer(brokerList);
         mGson = new Gson();
     }
 
@@ -95,14 +97,17 @@ public class GrabThread extends Thread{
         PictureKey pictureKey = new PictureKey();
         try
         {
+            mNotifier.notify("prepare to start grabbing video from"+mUrl);
+            Logger.log(mUrl, "prepare to start grabbing");
             mGrabber.start();
             mNotifier.notify("finish starting");
+            Logger.log(mUrl, "finish starting");
             while (mIsRunning)
             {
 
                 if(!mIsActive)
                 {
-                    Logger.log(TAG, "in pause");
+                    Logger.log(mUrl, "in pause");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -114,7 +119,8 @@ public class GrabThread extends Thread{
 //                frame = mGrabber.grabFrame(false, true, true, false);
                 frame = mGrabber.grab();
                 image = mIlplImageConverter.convertToIplImage(frame);
-                mNotifier.notify("finish grabbing frame " + mCount);
+                mNotifier.notify("grab frame " + mCount+"/"+mIndex);
+                Logger.log(mUrl, "grab frame " + mCount+"/"+mIndex);
                 if(image != null)
                 {
                     //resize image
@@ -130,36 +136,42 @@ public class GrabThread extends Thread{
                     time = System.currentTimeMillis();
                     fileName = String.format(mFormat, mCount, time);
                     res = mHelper.upload(is, fileName);
-                    mNotifier.notify("finish writing frame:" + mCount+", "+res);
-
+                    mNotifier.notify("write frame " + mCount+" to "+fileName+", "+res);
+                    Logger.log(mUrl, "write frame " + mCount+" to "+fileName+", "+res);
                     //send message to kafka
                     pictureKey.url = mDir+File.separator+fileName;
                     pictureKey.video_id = mUrl;
                     pictureKey.time_stamp = String.valueOf(time);
                     try {
-                        mProducer.send(mTopic, mGson.toJson(pictureKey));
+                        if(mProducer != null)
+                            mProducer.send(mTopic, mGson.toJson(pictureKey));
                     } catch (Exception e) {
                         e.printStackTrace();
-                        Logger.log(TAG, "Producer send message Exception, when send:"+
+                        Logger.log(mUrl, "Producer send message Exception, when send:"+
                                 pictureKey.url+", "+pictureKey.video_id+","+pictureKey.time_stamp);
                     }
 
                     mCount++;
                 }
+                else
+                {
+                    Logger.log(mUrl, "sorry, the image of frame "+mIndex+" is null");
+                }
                 mIndex++;
             }
-            mNotifier.notify("grab total: " + mCount+"/"+mIndex);
+            mNotifier.notify("grabbing total: " + mCount+"/"+mIndex+" in "+mUrl);
+            Logger.log(mUrl, "grabbing total: " + mCount+"/"+mIndex);
             mNotifier.stop();
         }
         catch (FrameGrabber.Exception e)
         {
             e.printStackTrace();
-            Logger.log(TAG, "Frame Exception");
+            Logger.log(mUrl, "Frame Exception when grabbing");
         }
         catch (IOException e)
         {
             e.printStackTrace();
-            Logger.log(TAG, "IO Exception");
+            Logger.log(mUrl, "IO Exception when grabbing");
         }
     }
 
@@ -175,7 +187,8 @@ public class GrabThread extends Thread{
         } catch (FrameGrabber.Exception e) {
             e.printStackTrace();
         }
-        mNotifier.notify("start grab");
+        mNotifier.notify("start grabbing");
+        Logger.log(mUrl, "start grabbing");
     }
 
     /**
@@ -199,7 +212,8 @@ public class GrabThread extends Thread{
     {
         mIsRunning = false;
         mIsActive = false;
-        mNotifier.notify("stop grab");
+        mNotifier.notify("stop grabbing");
+        Logger.log(mUrl, "stop grabbing");
     }
 
     /**
@@ -208,8 +222,8 @@ public class GrabThread extends Thread{
     public void pauseGrab()
     {
         mIsActive = false;
-        mNotifier.notify("pause grab");
-
+        mNotifier.notify("pause grabbing");
+        Logger.log(mUrl, "pause grabbing");
     }
 
     /**
@@ -218,7 +232,8 @@ public class GrabThread extends Thread{
     public void continueGrab()
     {
         mIsActive = true;
-        mNotifier.notify("continue grab");
+        mNotifier.notify("continue grabbing");
+        Logger.log(mUrl, "continue grabbing");
     }
 
     public boolean isRunning()
@@ -303,7 +318,7 @@ public class GrabThread extends Thread{
             {
                 try {
                     msg = reader.readLine();
-                    Logger.log(TAG, "Receive:"+msg);
+//                    Logger.log(TAG, "Receive:"+msg);
                     if(listener != null)
                         listener.handleMessage(msg);
                     if(msg == null || STOP.equals(msg))
@@ -339,7 +354,7 @@ public class GrabThread extends Thread{
         //this log file is just for test
         try
         {
-            Logger.setOutput(new FileOutputStream("GrabThread", true));
+            Logger.setOutput(new FileOutputStream("VideoGrabber", true));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             Logger.setDebug(false);
@@ -376,6 +391,8 @@ public class GrabThread extends Thread{
             }
         });
         listenThread.start();
+
+        Logger.log(TAG, "GrabThread is running");
 
         try {
             grabThread.join();

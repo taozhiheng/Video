@@ -39,7 +39,7 @@ public class ResolveBolt extends BaseRichBolt {
 //                "redis.2016@develop.finalshares.com", new String[]{"rtmp://120.26.103.237:1935/myapp/test1"});
 //        mNotifier.prepare();
         try {
-            Logger.setOutput(new FileOutputStream(TAG, true));
+            Logger.setOutput(new FileOutputStream("VideoGrabber", true));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             Logger.setDebug(false);
@@ -49,7 +49,7 @@ public class ResolveBolt extends BaseRichBolt {
     public void execute(Tuple tuple) {
         String data = (String) tuple.getValue(0);
 //        mNotifier.notify("Receive source:"+data);
-        Logger.log(TAG, "execute: "+data);
+        Logger.log(TAG, "resolve data: "+data);
         String url = null;
         VideoInfo videoInfo = new VideoInfo();
         try

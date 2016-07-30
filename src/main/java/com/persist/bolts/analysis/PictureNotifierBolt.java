@@ -10,6 +10,9 @@ import backtype.storm.tuple.Values;
 import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.Logger;
 import com.persist.util.tool.analysis.IPictureNotifier;
+
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.Map;
 
 /**
@@ -39,6 +42,12 @@ public class PictureNotifierBolt extends BaseRichBolt{
         Logger.log(TAG, "prepare PictureNotifierBolt");
         this.mCollector = outputCollector;
         mNotifier.prepare();
+        try {
+            Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            Logger.setDebug(false);
+        }
     }
 
     @Override
@@ -54,6 +63,7 @@ public class PictureNotifierBolt extends BaseRichBolt{
     public void execute(Tuple tuple) {
         PictureResult result = (PictureResult) tuple.getValue(0);
         mNotifier.notifyResult(result);
+        Logger.log(TAG, "record: "+result.description.url+","+result.description.video_id+","+result.percent);
         mCollector.emit(new Values(result));
         mCollector.ack(tuple);
     }
