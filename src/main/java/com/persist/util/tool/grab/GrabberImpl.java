@@ -2,7 +2,9 @@ package com.persist.util.tool.grab;
 
 import com.persist.util.helper.Logger;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 
 /**
  * Created by taozhiheng on 16-7-15.
@@ -38,7 +40,18 @@ public class GrabberImpl implements IGrabber {
             if(nameFormat != null)
                 builder.append(' ').append(nameFormat);
             Logger.log(TAG, "execute command:"+builder.toString());
-            return Runtime.getRuntime().exec(builder.toString());
+            Process p = Runtime.getRuntime().exec(builder.toString());
+            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+            String msg;
+            while(true)
+            {
+                msg = reader.readLine();
+                Logger.log(TAG, msg);
+                if(msg == null)
+                    break;
+            }
+            reader.close();
+            return p;
         } catch (IOException e) {
             e.printStackTrace();
             Logger.log(TAG, "process Exception:"+e.getMessage());

@@ -65,8 +65,7 @@ public class PictureRecorderBolt  extends BaseRichBolt {
         PictureResult result = (PictureResult) tuple.getValue(0);
         boolean status = mRecorder.recordResult(result);
 //        mNotifier.notify("Record image:"+result.description.url+", status:"+status);
-        Logger.log(TAG, "record: "+result.description.url+","+result.description.video_id+","+result.percent
-                        +" status:"+status);
+        Logger.log(TAG, "record: "+result.description.url+","+result.description.video_id+","+result.percent+" status:"+status);
         mCollector.ack(tuple);
     }
 

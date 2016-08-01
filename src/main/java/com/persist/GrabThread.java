@@ -341,6 +341,8 @@ public class GrabThread extends Thread{
      * */
     public static void main(String[] args)
     {
+        Logger.log(TAG, "enter GrabThread main");
+
         if(args.length < 7)
             throw new RuntimeException("the main method of GrabThread need at lease 7 arguments");
         String host = args[0];
@@ -359,6 +361,7 @@ public class GrabThread extends Thread{
             e.printStackTrace();
             Logger.setDebug(false);
         }
+
 
         //this notifier is not needed
         IVideoNotifier notifier = new VideoNotifierImpl(
