@@ -1,0 +1,8 @@
+{
+"function":"image-check",
+"so":"CalculatorImpl",
+"drpcSpoutParallel": 3,
+"imageBoltParallel": 3,
+"returnBoltParallel": 3,
+"workerNum": 3
+}

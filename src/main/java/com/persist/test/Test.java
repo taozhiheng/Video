@@ -1,7 +1,9 @@
 package com.persist.test;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.AnalysisConfig;
+import com.persist.bean.analysis.ImageInfo;
 import com.persist.bean.grab.GrabConfig;
 import com.persist.bean.grab.VideoInfo;
 import com.persist.util.helper.FileHelper;
@@ -30,19 +32,22 @@ public class Test {
     {
         //the notifier is just for test, actually it can be removed
 
-        StringBuilder builder = new StringBuilder();
-        String host = null;
-        String password = null;
-        int port = 0;
-        String url = null;
-        String dir = null;
-        builder.append(' ').append(host).append(' ').append(port).append(' ').append(password);
-        builder.append(' ').append(url).append(' ').append(dir);
-        IVideoNotifier notifier = new VideoNotifierImpl(
-                "null", port,
-                "null", new String[]{url});
-        System.out.println(builder.toString());
-        notifier.notify("msg");
-        notifier.notify("test");
+        AnalysisConfig config = new AnalysisConfig();
+        Gson gson = new Gson();
+        config = gson.fromJson(FileHelper.readString("analyzer_config.json"), AnalysisConfig.class);
+        System.out.println("warnValue:"+config.warnValue);
+        System.out.println(System.getProperty("java.library.path"));
+
+        try {
+            ImageInfo info = gson.fromJson("aaa", ImageInfo.class);
+        }
+        catch(JsonSyntaxException e)
+        {
+            System.out.println("JsonSyntaxException");
+            e.printStackTrace();
+        }
+
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        System.out.println(FileHelper.download(os, "aaa"));
     }
 }

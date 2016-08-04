@@ -11,6 +11,10 @@ package com.persist.bean.analysis;
  */
 public class AnalysisConfig {
 
+    public String so = "";
+
+    public float warnValue = 0.75f;
+
     //the KafkaSpout parallelism which will determine the process num
     public int keySpoutParallel = 1;
     //the PictureResultBolt parallelism
@@ -57,6 +61,9 @@ public class AnalysisConfig {
     public String hbaseColumnFamily = "info";
 
     public String[] hbaseColumns = {"video_id", "time_stamp", "ok", "percent"};
+
+    //the num to workers
+    public int workerNum = 3;
 
     //the log dir which seems invisible
     public String log = "image_log";

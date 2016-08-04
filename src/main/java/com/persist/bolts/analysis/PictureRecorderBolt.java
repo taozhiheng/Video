@@ -27,8 +27,6 @@ public class PictureRecorderBolt  extends BaseRichBolt {
     private IPictureRecorder mRecorder;
     private OutputCollector mCollector;
 
-//    private IVideoNotifier mNotifier;
-
     public PictureRecorderBolt(IPictureRecorder recorder) {
         this.mRecorder = recorder;
     }
@@ -40,10 +38,6 @@ public class PictureRecorderBolt  extends BaseRichBolt {
         Logger.log(TAG, "prepare PictureNotifierBolt");
         this.mCollector = outputCollector;
         mRecorder.prepare();
-//        mNotifier = new VideoNotifierImpl(
-//                "develop.finalshares.com", 6379,
-//                "redis.2016@develop.finalshares.com", new String[]{"record"});
-//        mNotifier.prepare();
         try {
             Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
         } catch (FileNotFoundException e) {
@@ -55,7 +49,6 @@ public class PictureRecorderBolt  extends BaseRichBolt {
     @Override
     public void cleanup() {
         mRecorder.stop();
-//        mNotifier.stop();
     }
 
     /**
@@ -64,7 +57,6 @@ public class PictureRecorderBolt  extends BaseRichBolt {
     public void execute(Tuple tuple) {
         PictureResult result = (PictureResult) tuple.getValue(0);
         boolean status = mRecorder.recordResult(result);
-//        mNotifier.notify("Record image:"+result.description.url+", status:"+status);
         Logger.log(TAG, "record: "+result.description.url+","+result.description.video_id+","+result.percent+" status:"+status);
         mCollector.ack(tuple);
     }

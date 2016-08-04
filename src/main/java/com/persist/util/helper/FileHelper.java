@@ -8,6 +8,9 @@ import org.json.simple.parser.ParseException;
 import sun.misc.BASE64Decoder;
 import java.io.*;
 import java.lang.reflect.Field;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 
 /**
  * Created by taozhiheng on 16-7-12.
@@ -15,6 +18,35 @@ import java.lang.reflect.Field;
  */
 public class FileHelper {
 
+
+    public static boolean download(OutputStream os, String urlString)
+    {
+        if(urlString == null)
+            return false;
+        try {
+            URL url = new URL(urlString);
+            URLConnection conn = url.openConnection();
+            InputStream is = conn.getInputStream();
+            byte[] buf = new byte[1024];
+            int size = 0;
+            while((size = is.read(buf))>-1)
+            {//循环读取
+                os.write(buf, 0, size);
+            }
+            os.flush();
+            is.close();
+            return true;
+        }
+        catch (MalformedURLException e)
+        {
+            e.printStackTrace();
+            return false;
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
     /**
      * parse properties from json string

@@ -5,6 +5,7 @@ import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.grab.VideoInfo;
 import com.persist.kafka.KafkaNewProducer;
 import com.persist.util.helper.HDFSHelper;
+import com.persist.util.helper.ImageHepler;
 import com.persist.util.helper.Logger;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
@@ -13,6 +14,7 @@ import org.bytedeco.javacv.*;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.lang.management.ManagementFactory;
 
 /**
  * Created by taozhiheng on 16-7-19.
@@ -31,7 +33,8 @@ public class GrabThread extends Thread{
     private Java2DFrameConverter mImageConverter;
 
     private String mFormat = "picture-%05d-%d.png";
-    private int mWidth = 480;
+    private int mWidth = 227;
+    private int mHeight = 227;
 
     private boolean mIsRunning;
     private boolean mIsActive;
@@ -45,6 +48,8 @@ public class GrabThread extends Thread{
     private String mTopic;
 
     private Gson mGson;
+
+
 
     public GrabThread(String url, String dir, IVideoNotifier notifier, String topic, String brokerList)
     {
@@ -126,9 +131,10 @@ public class GrabThread extends Thread{
                     //resize image
                     oldW = image.width();
                     oldH = image.height();
-                    h = (int) (1.0*mWidth / oldW * oldH);
-                    bi = new BufferedImage(mWidth, h, BufferedImage.TYPE_3BYTE_BGR);
-                    bi.getGraphics().drawImage(mImageConverter.getBufferedImage(frame), 0, 0, mWidth, h, null);
+                    bi = new BufferedImage(oldW, oldH, BufferedImage.TYPE_3BYTE_BGR);
+                    bi.getGraphics().drawImage(mImageConverter.getBufferedImage(frame), 0, 0, oldW, oldH, null);
+                    bi = ImageHepler.resize(bi, mWidth, mHeight);
+                    Logger.log(mUrl, "size: "+bi.getWidth()+"*"+bi.getHeight());
                     //store image to hdfs
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     ImageIO.write(bi, "png", baos);
@@ -276,11 +282,12 @@ public class GrabThread extends Thread{
 
 
     /**
-     * set picture width
+     * set picture size
      * */
-    public void setWidth(int width)
+    public void setSize(int width, int height)
     {
         this.mWidth = width;
+        this.mHeight = height;
     }
 
 
@@ -395,7 +402,7 @@ public class GrabThread extends Thread{
         });
         listenThread.start();
 
-        Logger.log(TAG, "GrabThread is running");
+        Logger.log(TAG, "GrabThread is running in "+ ManagementFactory.getRuntimeMXBean().getName());
 
         try {
             grabThread.join();

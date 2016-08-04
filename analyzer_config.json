@@ -1,4 +1,6 @@
 {
+"so": "CalculatorImpl",
+"warnValue": 0.8,
 "keySpoutParallel": 3,
 "resultBoltParallel": 3,
 "notifierBoltParallel": 3,

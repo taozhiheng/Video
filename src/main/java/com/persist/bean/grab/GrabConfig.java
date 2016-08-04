@@ -47,9 +47,11 @@ public class GrabConfig {
     //the redis password
     public String redisPassword = "redis.2016@develop.finalshares.com";
 
-
     //the format to name pictures
     public String nameFormat = "frame-%05d-%d.png";
+
+    //the num to workers
+    public int workerNum = 3;
 
     //the log dir which seems invisible
     public String log = "video_log";

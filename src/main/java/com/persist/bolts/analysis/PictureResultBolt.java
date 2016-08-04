@@ -83,7 +83,7 @@ public class PictureResultBolt extends BaseRichBolt {
             for(PictureResult result : list)
             {
                 mCollector.emit(new Values(result));
-                Logger.log(TAG, "emit result:"+mGson.toJson(result));
+                Logger.log(TAG, "emit result:"+result.description.url+", "+result.percent);
             }
         }
         mCollector.ack(tuple);

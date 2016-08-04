@@ -46,12 +46,7 @@ public class GrabBolt extends BaseRichBolt {
     private String mRedisPassword;
 
     private String mBrokerList;
-
     private String mSendTopic;
-
-//    private IVideoNotifier mNotifier;
-
-
 
     public GrabBolt(IGrabber grabber, int grabLimit, String sendTopic, String brokerList)
     {
@@ -72,24 +67,20 @@ public class GrabBolt extends BaseRichBolt {
     @Override
     public void cleanup() {
         super.cleanup();
-//        mNotifier.stop();
         Logger.close();
     }
 
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        Logger.log(TAG, "prepare");
         mCollector = outputCollector;
-//        mNotifier = new VideoNotifierImpl(
-//                "develop.finalshares.com", 6379,
-//                "redis.2016@develop.finalshares.com", new String[]{"rtmp://120.26.103.237:1935/myapp/test1"});
-//        mNotifier.prepare();
         mProcessMap = new HashMap<String, Process>(mGrabLimit);
+        mCurrentGrab = 0;
         try {
             Logger.setOutput(new FileOutputStream("VideoGrabber", true));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             Logger.setDebug(false);
         }
+        Logger.log(TAG, "prepare, current process status:"+mCurrentGrab+"/"+mGrabLimit);
     }
 
     /**
@@ -102,22 +93,23 @@ public class GrabBolt extends BaseRichBolt {
         if(videoInfo == null)
             return;
         Process process = null;
-//        mNotifier.notify("Receive command:"+videoInfo.cmd);
         Logger.log(TAG, "grab data: "+videoInfo.cmd+","+videoInfo.url+","+videoInfo.dir);
         //add
         if(videoInfo.cmd.equals(VideoInfo.ADD))
         {
             //if there too many running child processes, fail
-            if (mCurrentGrab >= mGrabLimit) {
+            if (mCurrentGrab >= mGrabLimit)
+            {
                 Logger.log(TAG, "child process num has been max value:"+mCurrentGrab+"/"+mGrabLimit);
                 mCollector.fail(tuple);
                 return;
             }
-            //if the video is No.0, start flume
-//            else if (mCurrentGrab == 0) {
-//                //how to start flume???
-//
-//            }
+            if(mProcessMap.get(videoInfo.url) != null)
+            {
+                mCollector.ack(tuple);
+                Logger.log(TAG, "the url:"+videoInfo.url+" is being grabbed!");
+                return;
+            }
             //grab and send message to kafka
             process = mGrabber.grab(mRedisHost, mRedisPort, mRedisPassword,
                     videoInfo.url, videoInfo.dir,
@@ -126,7 +118,6 @@ public class GrabBolt extends BaseRichBolt {
             {
                 mProcessMap.put(videoInfo.url, process);
                 mCurrentGrab++;
-//                mNotifier.notify(" start process:"+process);
                 Logger.log(TAG, "start process:"+process);
             }
         }
@@ -138,7 +129,8 @@ public class GrabBolt extends BaseRichBolt {
                 ProcessHelper.sendMessage(process, VideoInfo.DEL);
                 ProcessHelper.finishMessage(process);
                 process.destroy();
-//                mNotifier.notify(" destroy process:"+process);
+                mProcessMap.remove(videoInfo.url);
+                mCurrentGrab--;
                 Logger.log(TAG, "destroy process:"+process);
             }
         }
@@ -149,7 +141,6 @@ public class GrabBolt extends BaseRichBolt {
             if(process != null)
             {
                 ProcessHelper.sendMessage(process, VideoInfo.PAUSE);
-//                mNotifier.notify(" pause process:"+process);
                 Logger.log(TAG, "pause process:"+process);
             }
         }
@@ -160,7 +151,6 @@ public class GrabBolt extends BaseRichBolt {
             if(process != null)
             {
                 ProcessHelper.sendMessage(process, VideoInfo.CONTINUE);
-//                mNotifier.notify(" continue process:"+process);
                 Logger.log(TAG, "continue process:"+process);
             }
         }

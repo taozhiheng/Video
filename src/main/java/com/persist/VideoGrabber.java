@@ -97,7 +97,7 @@ public class VideoGrabber {
         //submit topology
         Config conf = new Config();
         if (args.length > 1) {
-            conf.setNumWorkers(3);
+            conf.setNumWorkers(grabConfig.workerNum);
             conf.setDebug(false);
             StormSubmitter.submitTopology(args[1], conf, builder.createTopology());
         } else {

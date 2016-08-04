@@ -71,12 +71,6 @@ public class PictureRecorderImpl implements IPictureRecorder {
                 e.printStackTrace();
             }
         }
-        //write back
-        Logger.log(TAG, "write result:"
-                + result.description.url + ", "
-                + result.description.video_id + ", "
-                + result.ok + ", "
-                + result.percent);
         return ok;
     }
 

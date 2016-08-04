@@ -14,7 +14,7 @@ import java.lang.String;
  * Created by taozhiheng on 16-7-17.
  * simple operations on hdfs
  */
-public class HDFSHelper {
+public class HDFSHelper implements Serializable{
 
     private String ip;
 

@@ -65,6 +65,7 @@ public class VideoAnalyzer {
         //the instance should be a CalculatorImpl instance
         IPictureCalculator calculator = new PictureCalculatorImpl(
                 baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
+//        IPictureCalculator calculator = new CalculatorImpl(baseConfig.so, baseConfig.warnValue);
         IPictureNotifier notifier = new PictureNotifierImpl(
                 baseConfig.redisHost, baseConfig.redisPort,
                 baseConfig.redisPassword, baseConfig.redisChannels);
@@ -101,7 +102,7 @@ public class VideoAnalyzer {
         //submit topology
         Config conf = new Config();
         if (args.length > 1) {
-            conf.setNumWorkers(3);
+            conf.setNumWorkers(baseConfig.workerNum);
             conf.setDebug(false);
             StormSubmitter.submitTopology(args[1], conf, builder.createTopology());
         } else {

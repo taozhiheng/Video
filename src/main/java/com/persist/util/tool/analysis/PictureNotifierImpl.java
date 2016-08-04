@@ -69,13 +69,6 @@ public class PictureNotifierImpl implements IPictureNotifier {
             initGson();
         String msg = mGson.toJson(result);
         mJedis.publish(result.description.video_id, msg);
-//        if(channels != null) {
-//            for (String channel : channels)
-//            {
-//                mJedis.publish(channel, msg);
-//            }
-//        }
-        Logger.log(TAG, "notify:"+msg);
     }
 
     public void stop() {

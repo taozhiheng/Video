@@ -63,7 +63,7 @@ public class PictureNotifierBolt extends BaseRichBolt{
     public void execute(Tuple tuple) {
         PictureResult result = (PictureResult) tuple.getValue(0);
         mNotifier.notifyResult(result);
-        Logger.log(TAG, "record: "+result.description.url+","+result.description.video_id+","+result.percent);
+        Logger.log(TAG, "notify: "+result.description.url+","+result.description.video_id+","+result.percent);
         mCollector.emit(new Values(result));
         mCollector.ack(tuple);
     }

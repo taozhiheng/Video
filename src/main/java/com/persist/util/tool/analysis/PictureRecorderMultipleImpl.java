@@ -42,15 +42,14 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
     private void initHBase()
     {
-        if(mHelper == null)
-        {
-            mHelper = new HBaseHelper(quorum, port, master, auth);
-            try {
+        if(mHelper != null)
+            return;
+        mHelper = new HBaseHelper(quorum, port, master, auth);
+        try {
 
-                mHelper.createTable(tableName, new String[]{columnFamily});
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            mHelper.createTable(tableName, new String[]{columnFamily});
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -61,10 +60,11 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
     public boolean recordResult(PictureResult result) {
         boolean ok = false;
+        if(mHelper == null)
+            initHBase();
 
         if(mHelper != null)
         {
-            mHelper = new HBaseHelper(quorum, port, master, auth);
             try {
                 mHelper.addRow(tableName, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,

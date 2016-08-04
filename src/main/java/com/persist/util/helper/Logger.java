@@ -38,7 +38,7 @@ public class Logger implements Serializable{
         {
             calendar.setTimeInMillis(System.currentTimeMillis());
             //print date
-            printWriter.print(String.format("%04d/%02d/%02d ", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE)));
+            printWriter.print(String.format("%04d/%02d/%02d ", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH)+1, calendar.get(Calendar.DATE)));
             //print time
             printWriter.print(String.format("%02d:%02d:%02d ", calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), calendar.get(Calendar.SECOND)));
             printWriter.println("[" + tag + "]: " + msg);
