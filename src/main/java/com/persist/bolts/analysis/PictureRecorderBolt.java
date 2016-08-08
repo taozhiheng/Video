@@ -22,7 +22,7 @@ import java.util.Map;
  */
 public class PictureRecorderBolt  extends BaseRichBolt {
 
-    private final static String TAG = "PictureNotifierBolt";
+    private final static String TAG = "PictureRecorderBolt";
 
     private IPictureRecorder mRecorder;
     private OutputCollector mCollector;

@@ -1,7 +1,5 @@
 package com.persist.bolts.image;
 
-import backtype.storm.drpc.DRPCInvocationsClient;
-import backtype.storm.generated.DistributedRPCInvocations;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -9,7 +7,6 @@ import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
-import backtype.storm.utils.Utils;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.CalculateInfo;
@@ -18,9 +15,6 @@ import com.persist.util.helper.FileHelper;
 import com.persist.util.helper.ImageHepler;
 import com.persist.util.helper.Logger;
 import com.persist.util.tool.analysis.CalculatorImpl;
-import com.persist.util.tool.analysis.IPictureCalculator;
-import org.apache.thrift7.TException;
-import org.json.simple.JSONValue;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;

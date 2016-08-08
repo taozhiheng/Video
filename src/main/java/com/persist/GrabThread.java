@@ -149,8 +149,11 @@ public class GrabThread extends Thread{
                     pictureKey.video_id = mUrl;
                     pictureKey.time_stamp = String.valueOf(time);
                     try {
-                        if(mProducer != null)
-                            mProducer.send(mTopic, mGson.toJson(pictureKey));
+                        if(mProducer != null) {
+                            String msg = mGson.toJson(pictureKey);
+                            mProducer.send(mTopic, msg);
+                            Logger.log(mUrl, "send kafka msg:"+msg);
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                         Logger.log(mUrl, "Producer send message Exception, when send:"+
@@ -299,6 +302,8 @@ public class GrabThread extends Thread{
         private BufferedReader reader;
         private String STOP;
 
+        private boolean run;
+
         private MessageListener listener;
 
         public interface MessageListener
@@ -310,6 +315,7 @@ public class GrabThread extends Thread{
         {
             this.reader = reader;
             this.STOP = stop;
+            this.run = true;
         }
 
         public void setListener(MessageListener l)
@@ -321,7 +327,7 @@ public class GrabThread extends Thread{
         public void run() {
 
             String msg;
-            while (true)
+            while (run)
             {
                 try {
                     msg = reader.readLine();
@@ -334,6 +340,11 @@ public class GrabThread extends Thread{
                     e.printStackTrace();
                 }
             }
+        }
+
+        public void destory()
+        {
+            this.run = false;
         }
     }
 
@@ -406,11 +417,11 @@ public class GrabThread extends Thread{
 
         try {
             grabThread.join();
-            listenThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         finally {
+            listenThread.destory();
             Logger.close();
         }
 

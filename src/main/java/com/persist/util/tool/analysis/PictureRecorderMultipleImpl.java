@@ -71,14 +71,16 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
                                 String.valueOf(result.ok), String.valueOf(result.percent)});
 
                 //根据不同的视频id来创建不同的表
-                mHelper.createTable(result.description.video_id, new String[]{columnFamily});
-                mHelper.addRow(result.description.video_id, result.description.url, columnFamily,columns,
+                String urlTable = String.valueOf(Math.abs(result.description.video_id.hashCode()));
+                Logger.log(TAG, "mainTable:"+tableName+", urlTable:"+urlTable+", yellowTable:"+yellowTableName);
+                mHelper.createTable(urlTable, new String[]{columnFamily});
+                mHelper.addRow(urlTable, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,
                                 String.valueOf(result.ok), String.valueOf(result.percent)});
 
                 //把所有是黄图的记录添加到同一张表中
                 mHelper.createTable(yellowTableName, new String[]{columnFamily});
-                if(result.ok)
+                if(!result.ok)
                 {
                     mHelper.addRow(yellowTableName, result.description.url, columnFamily,columns,
                             new String[]{result.description.video_id, result.description.time_stamp,
@@ -105,15 +107,9 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
             } catch (Exception e) {
                 e.printStackTrace();
+                Logger.log(TAG, "write Exception:"+e.getMessage());
             }
         }
-        //write back
-        Logger.log(TAG, "write result:"
-                + result.description.url + ", "
-                + result.description.video_id + ", "
-                + result.ok + ", "
-                + result.percent
-                + " status:"+ok);
         return ok;
     }
 

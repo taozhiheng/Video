@@ -1,0 +1,6 @@
+2016/08/08 15:09:41 [VideoGrabber]: configPath:grabber_config.json
+2016/08/08 15:09:42 [VideoGrabber]: url-spout
+2016/08/08 15:09:42 [VideoGrabber]: zks:192.168.0.189:2181, topic:topic-capture-image, zkRoot:/usr/local/kafka_2.11-0.10.0/pyleus-kafka-offsets/video, id:kafka-video
+2016/08/08 15:09:48 [GrabBolt]: prepare, current process status:0/1
+2016/08/08 15:09:48 [GrabBolt]: prepare, current process status:0/1
+2016/08/08 15:09:48 [GrabBolt]: prepare, current process status:0/1

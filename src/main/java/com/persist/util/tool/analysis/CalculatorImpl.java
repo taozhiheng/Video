@@ -5,7 +5,6 @@ import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.HDFSHelper;
 import com.persist.util.helper.ImageHepler;
-
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -18,6 +17,9 @@ import java.util.Map;
 /**
  * Created by taozhiheng on 16-7-29.
  *
+ * Note:
+ * the class name can't not be directly renamed.
+ * If you want to rename it, remember to rebuilt the relative .so.
  */
 public class CalculatorImpl implements IPictureCalculator {
 
@@ -43,7 +45,6 @@ public class CalculatorImpl implements IPictureCalculator {
     public CalculatorImpl(String so, float warnValue)
     {
         if(so == null)
-
             throw new RuntimeException("the so must not be null");
         this.so = so;
         mWarnValue = warnValue;
@@ -53,7 +54,7 @@ public class CalculatorImpl implements IPictureCalculator {
     }
 
     public void prepare() {
-        if(so.endsWith(".so"))
+        if(so.contains(".so"))
             System.load(so);
         else
             System.loadLibrary(so);
@@ -83,7 +84,7 @@ public class CalculatorImpl implements IPictureCalculator {
             e.printStackTrace();
         }
         long curTime = System.currentTimeMillis();
-        if(mBuffer.size() >= mBufferSize || curTime-lastTime >= mDuration)
+        if(mBuffer.size() >= mBufferSize || (curTime-lastTime >= mDuration && mBuffer.size() > 0))
         {
             //calculate
             HashMap<String, Float> map = predict(mBuffer);
@@ -123,6 +124,8 @@ public class CalculatorImpl implements IPictureCalculator {
 
     public HashMap<String, Float> predict(List<CalculateInfo> images)
     {
+        if(images == null || images.size() == 0)
+            return null;
         return predict(images, 0, null, null, 102, 0);
     }
 
@@ -133,37 +136,5 @@ public class CalculatorImpl implements IPictureCalculator {
                                                   int batchSize,
                                                   int gpuId);
 
-//    public static void main(String[] args)
-//    {
-////        System.load(args[0]);
-//        System.load("/home/taozhiheng/IdeaProjects/Video/src/main/jni/com_persist_util_tool_analysis_CalculatorImpl.so");
-//        System.out.println("load ok");
-//        List<CalculateInfo> list = new ArrayList<CalculateInfo>();
-//        CalculateInfo calculateInfo;
-//        int size = args.length;
-//        byte[] pixels;
-//        for(int i = 1; i < size; i++)
-//        {
-//            BufferedImage image = null;
-//            try {
-//                image = ImageIO.read(new File(args[i]));
-//                pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-//                calculateInfo = new CalculateInfo("url-"+i, pixels, image.getHeight(), image.getWidth());
-//                list.add(calculateInfo);
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//
-//        }
-//        list.add(new CalculateInfo("url-0", new byte[]{65, 66, 67, 68, 69}, 227, 227));
-//        CalculatorImpl calculator = new CalculatorImpl();
-//        System.out.println("add ok");
-//        Map<String, Float> map = calculator.predict(list, 0, null, null, 1024, 0);
-//        System.out.println("predict ok!");
-//        System.out.println(map.size());
-//        for (Map.Entry<String, Float> entry : map.entrySet()) {
-//            System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue());
-//        }
-//    }
 
 }

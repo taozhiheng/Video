@@ -62,18 +62,12 @@ public class VideoAnalyzer {
         Logger.log(TAG, "configPath:"+configPath);
 
         //construct calculator and notifier to deal with msg
-        //the instance should be a CalculatorImpl instance
-        IPictureCalculator calculator = new PictureCalculatorImpl(
-                baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
-//        IPictureCalculator calculator = new CalculatorImpl(baseConfig.so, baseConfig.warnValue);
+//        IPictureCalculator calculator = new PictureCalculatorTestImpl(
+//                baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
+        IPictureCalculator calculator = new CalculatorImpl(baseConfig.so, baseConfig.warnValue);
         IPictureNotifier notifier = new PictureNotifierImpl(
                 baseConfig.redisHost, baseConfig.redisPort,
                 baseConfig.redisPassword, baseConfig.redisChannels);
-//        IPictureRecorder recorder = new PictureRecorderImpl(
-//                baseConfig.hbaseQuorum, baseConfig.hbasePort,
-//                baseConfig.hbaseMater, baseConfig.hbaseAuth,
-//                baseConfig.hbaseTable, baseConfig.hbaseColumnFamily,
-//                baseConfig.hbaseColumns);
         IPictureRecorder recorder = new PictureRecorderMultipleImpl(
                 baseConfig.hbaseQuorum, baseConfig.hbasePort,
                 baseConfig.hbaseMater, baseConfig.hbaseAuth,

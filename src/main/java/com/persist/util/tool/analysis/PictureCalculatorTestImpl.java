@@ -24,7 +24,7 @@ import java.util.List;
  *
  * this class is just for test
  */
-public class PictureCalculatorImpl implements IPictureCalculator {
+public class PictureCalculatorTestImpl implements IPictureCalculator {
 
     private final static String TAG = "PictureCalculatorImpl";
     private final static String URL = "http://www.faceplusplus.com.cn/wp-content/themes/faceplusplus/assets/img/demo/9.jpg";
@@ -34,7 +34,7 @@ public class PictureCalculatorImpl implements IPictureCalculator {
     private int port;
     private String password;
 
-    public PictureCalculatorImpl(String host, int port, String password)
+    public PictureCalculatorTestImpl(String host, int port, String password)
     {
         if(host == null || password == null)
             throw new RuntimeException("Redis host or password must not be null");

@@ -2,7 +2,6 @@ package com.persist;
 
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
-import backtype.storm.LocalDRPC;
 import backtype.storm.StormSubmitter;
 import backtype.storm.drpc.DRPCSpout;
 import backtype.storm.topology.TopologyBuilder;
