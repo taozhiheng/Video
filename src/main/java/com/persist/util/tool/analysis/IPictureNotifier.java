@@ -12,7 +12,7 @@ public interface IPictureNotifier extends Serializable{
 
     void prepare();
 
-    void notifyResult(PictureResult result);
+    boolean notifyResult(PictureResult result);
 
     void stop();
 

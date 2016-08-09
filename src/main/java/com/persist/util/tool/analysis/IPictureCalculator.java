@@ -14,5 +14,7 @@ public interface IPictureCalculator extends Serializable{
 
     void prepare();
 
+    void cleanup();
+
     List<PictureResult> calculateImage(PictureKey key);
 }

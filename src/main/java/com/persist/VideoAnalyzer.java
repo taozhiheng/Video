@@ -64,7 +64,7 @@ public class VideoAnalyzer {
         //construct calculator and notifier to deal with msg
 //        IPictureCalculator calculator = new PictureCalculatorTestImpl(
 //                baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
-        IPictureCalculator calculator = new CalculatorImpl(baseConfig.so, baseConfig.warnValue);
+//        IPictureCalculator calculator = new CalculatorImpl(baseConfig.so, baseConfig.warnValue);
         IPictureNotifier notifier = new PictureNotifierImpl(
                 baseConfig.redisHost, baseConfig.redisPort,
                 baseConfig.redisPassword, baseConfig.redisChannels);
@@ -86,7 +86,8 @@ public class VideoAnalyzer {
         //construct topology builder
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout(KEY_SPOUT, new KafkaSpout(spoutConfig), baseConfig.keySpoutParallel);
-        builder.setBolt(RESULT_BOLT, new PictureResultBolt(calculator), baseConfig.resultBoltParallel)
+        builder.setBolt(RESULT_BOLT, new PictureResultBolt(baseConfig.so, baseConfig.warnValue),
+                baseConfig.resultBoltParallel)
                 .shuffleGrouping(KEY_SPOUT);
         builder.setBolt(NOTIFIER_BOLT, new PictureNotifierBolt(notifier), baseConfig.notifierBoltParallel)
                 .shuffleGrouping(RESULT_BOLT);

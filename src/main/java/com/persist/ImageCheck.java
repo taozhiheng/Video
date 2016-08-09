@@ -58,18 +58,17 @@ public class ImageCheck {
         }
         TopologyBuilder builder = new TopologyBuilder();
 
-        CalculatorImpl calculator = new CalculatorImpl(baseConfig.so);
+//        CalculatorImpl calculator = new CalculatorImpl(baseConfig.so);
 
         DRPCSpout drpcSpout = new DRPCSpout(baseConfig.function);
         builder.setSpout(INPUT_SPOUT, drpcSpout, baseConfig.drpcSpoutParallel);
-        builder.setBolt(DEAL_BOLT, new ImageBolt(calculator), baseConfig.imageBoltParallel)
+        builder.setBolt(DEAL_BOLT, new ImageBolt(baseConfig.so, baseConfig.warnValue), baseConfig.imageBoltParallel)
                 .shuffleGrouping(INPUT_SPOUT);
         builder.setBolt(RETURN_BOLT, new ReturnBolt(), baseConfig.returnBoltParallel)
                 .shuffleGrouping(DEAL_BOLT);
 //        builder.setBolt(RETURN_BOLT, new ReturnResults(), 3)
 //                .shuffleGrouping(DEAL_BOLT);
 
-        Logger.log(TAG, "create drpc topology, function is image-check");
 
         Config conf = new Config();
 
@@ -82,7 +81,6 @@ public class ImageCheck {
             conf.setDebug(true);
             LocalCluster cluster = new LocalCluster();
             cluster.submitTopology("image-check", conf, builder.createTopology());
-
 //            LocalDRPC drpc = new LocalDRPC();
 //            for (String word : new String[]{"hello", "goodbye"}) {
 //                Logger.log(TAG, "Result for \"" + word + "\": " + drpc.execute("image-check", word));
@@ -91,5 +89,7 @@ public class ImageCheck {
 //            cluster.shutdown();
 //            drpc.shutdown();
         }
+        Logger.log(TAG, "create drpc topology, function is image-check");
+
     }
 }

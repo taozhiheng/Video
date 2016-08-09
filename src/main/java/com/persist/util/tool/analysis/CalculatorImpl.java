@@ -5,6 +5,8 @@ import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.HDFSHelper;
 import com.persist.util.helper.ImageHepler;
+import com.persist.util.helper.Logger;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -23,30 +25,55 @@ import java.util.Map;
  */
 public class CalculatorImpl implements IPictureCalculator {
 
+    private final static String TAG = "CalculatorImpl";
+
     private float mWarnValue = 0.75f;
     private HDFSHelper mHelper;
     private Map<String, PictureKey> mInfoBuffer;
     private List<CalculateInfo> mBuffer;
-    private int mBufferSize = 100;
+    private int mBufferSize = 500;
     private long mDuration = 2000;
     private long lastTime;
 
     private int mWidth = 227;
     private int mHeight = 227;
 
-    private String so;
+    private  static String so;
 
+    private  static boolean hasLibrary = false;
 
-    public CalculatorImpl(String so)
+    private static CalculatorImpl INSTANCE;
+
+    public static CalculatorImpl getInstance(String lib)
     {
-        this(so, 0.75f);
+        return getInstance(lib, 0.75f);
     }
 
-    public CalculatorImpl(String so, float warnValue)
+    public static CalculatorImpl getInstance(String lib, float warnValue)
     {
-        if(so == null)
+        if(INSTANCE == null)
+        {
+            synchronized (CalculatorImpl.class)
+            {
+                if(INSTANCE == null)
+                {
+                    INSTANCE = new CalculatorImpl(lib, warnValue);
+                }
+            }
+        }
+        return INSTANCE;
+    }
+
+    private CalculatorImpl(String lib)
+    {
+        this(lib, 0.75f);
+    }
+
+    private CalculatorImpl(String lib, float warnValue)
+    {
+        if(lib == null)
             throw new RuntimeException("the so must not be null");
-        this.so = so;
+        so = lib;
         mWarnValue = warnValue;
         mHelper = new HDFSHelper(null);
         mBuffer = new ArrayList<CalculateInfo>();
@@ -54,10 +81,11 @@ public class CalculatorImpl implements IPictureCalculator {
     }
 
     public void prepare() {
-        if(so.contains(".so"))
-            System.load(so);
-        else
-            System.loadLibrary(so);
+
+    }
+
+    public void cleanup() {
+        mHelper.close();
     }
 
     public float getWarnValue()
@@ -65,38 +93,50 @@ public class CalculatorImpl implements IPictureCalculator {
         return mWarnValue;
     }
 
-    public List<PictureResult> calculateImage(PictureKey key) {
+    public synchronized List<PictureResult> calculateImage(PictureKey key) {
 
+        if(key == null)
+            return null;
         //put data to buffer
         try {
             ByteArrayOutputStream os = new ByteArrayOutputStream();
-            mHelper.download(os, key.url);
-            InputStream in = new ByteArrayInputStream(os.toByteArray());
-            BufferedImage image = ImageIO.read(in);
-            if(image.getWidth() != mWidth || image.getHeight() != mHeight)
-                image = ImageHepler.resize(image, mWidth, mHeight);
-            byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
-                    .getData();
-            mBuffer.add(new CalculateInfo(key.url, pixels, image.getHeight(), image.getWidth()));
-            mInfoBuffer.put(key.url, key);
+            if(key.url != null && mHelper.download(os, key.url))
+            {
+                InputStream in = new ByteArrayInputStream(os.toByteArray());
+                BufferedImage image = ImageIO.read(in);
+                if (image.getWidth() != mWidth || image.getHeight() != mHeight)
+                    image = ImageHepler.resize(image, mWidth, mHeight);
+                byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
+                        .getData();
+                mInfoBuffer.put(key.url, key);
+                mBuffer.add(new CalculateInfo(key.url, pixels, image.getHeight(), image.getWidth()));
+            }
             os.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
         long curTime = System.currentTimeMillis();
-        if(mBuffer.size() >= mBufferSize || (curTime-lastTime >= mDuration && mBuffer.size() > 0))
+        if(mBuffer.size() >= mBufferSize || ((key.url == null || curTime-lastTime >= mDuration) && mBuffer.size() > 0))
         {
             //calculate
             HashMap<String, Float> map = predict(mBuffer);
-            //return
-            List<PictureResult> results = new ArrayList<PictureResult>(map.size());
-            float value;
-            boolean ok;
-            for(Map.Entry<String, Float> entry : map.entrySet())
+            List<PictureResult> results = null;
+            if(map != null)
             {
-                value = entry.getValue();
-                ok = value < mWarnValue;
-                results.add(new PictureResult(mInfoBuffer.get(entry.getKey()), ok, value));
+                //return
+                results = new ArrayList<PictureResult>(map.size());
+                float value;
+                boolean ok;
+                PictureKey pictureKey;
+                for (Map.Entry<String, Float> entry : map.entrySet()) {
+                    value = entry.getValue();
+                    ok = value < mWarnValue;
+                    pictureKey = mInfoBuffer.get(entry.getKey());
+                    if(pictureKey == null)
+                        pictureKey = new PictureKey(entry.getKey(), "rtmp://unknown", "Unknown");
+                    results.add(new PictureResult(pictureKey, ok, value));
+                }
             }
             //clear
             mBuffer.clear();
@@ -107,29 +147,23 @@ public class CalculatorImpl implements IPictureCalculator {
         return null;
     }
 
-//    // Convert image to Mat
-//    public static Mat matify(BufferedImage im) {
-//        // Convert INT to BYTE
-//        //im = new BufferedImage(im.getWidth(), im.getHeight(),BufferedImage.TYPE_3BYTE_BGR);
-//        // Convert bufferedimage to byte array
-//        byte[] pixels = ((DataBufferByte) im.getRaster().getDataBuffer())
-//                .getData();
-//        // Create a Matrix the same size of image
-//        Mat mat = new Mat(im.getHeight(), im.getWidth(), CvType.CV_8UC3);
-//        // Fill Matrix with image values
-//        mat.put(0, 0, pixels);
-//        return mat;
-//
-//    }
 
-    public HashMap<String, Float> predict(List<CalculateInfo> images)
+    public static synchronized HashMap<String, Float> predict(List<CalculateInfo> images)
     {
+        if(!hasLibrary)
+        {
+            if(so.contains(".so"))
+                System.load(so);
+            else
+                System.loadLibrary(so);
+            hasLibrary = true;
+        }
         if(images == null || images.size() == 0)
             return null;
         return predict(images, 0, null, null, 102, 0);
     }
 
-    private native HashMap<String, Float> predict(List<CalculateInfo> images,
+    private static native HashMap<String, Float> predict(List<CalculateInfo> images,
                                                   int reset,
                                                   String modelFile,
                                                   String trainedFile,

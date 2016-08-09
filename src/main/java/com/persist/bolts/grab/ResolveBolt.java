@@ -43,18 +43,23 @@ public class ResolveBolt extends BaseRichBolt {
         String data = (String) tuple.getValue(0);
         Logger.log(TAG, "resolve data: "+data);
         String url = null;
-        VideoInfo videoInfo = new VideoInfo();
+        VideoInfo videoInfo;
         try
         {
             videoInfo = mGson.fromJson(data, VideoInfo.class);
-            url = videoInfo.url;
-            mCollector.emit(new Values(url, videoInfo));
-        }catch (JsonSyntaxException e)
+            if(videoInfo != null)
+            {
+                url = videoInfo.url;
+                mCollector.emit(new Values(url, videoInfo));
+            }
+        }
+        catch (JsonSyntaxException e)
         {
             Logger.log(TAG, "JsonSyntaxException:" + data);
             e.printStackTrace();
         }
-        finally {
+        finally
+        {
             mCollector.ack(tuple);
         }
     }

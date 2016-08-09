@@ -171,6 +171,7 @@ public class GrabThread extends Thread{
             mNotifier.notify("grabbing total: " + mCount+"/"+mIndex+" in "+mUrl);
             Logger.log(mUrl, "grabbing total: " + mCount+"/"+mIndex);
             mNotifier.stop();
+            mHelper.close();
         }
         catch (FrameGrabber.Exception e)
         {

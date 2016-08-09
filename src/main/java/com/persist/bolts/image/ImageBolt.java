@@ -39,7 +39,16 @@ public class ImageBolt extends BaseRichBolt {
     private int mWidth = 227;
     private int mHeight = 227;
 
-    public ImageBolt(CalculatorImpl calculator)
+    private String mLib;
+    private float mWarnValue;
+
+    public ImageBolt(String lib, float warnValue)
+    {
+        this.mLib = lib;
+        this.mWarnValue = warnValue;
+    }
+
+    private ImageBolt(CalculatorImpl calculator)
     {
         mCalculator = calculator;
     }
@@ -47,6 +56,10 @@ public class ImageBolt extends BaseRichBolt {
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.mCollector = outputCollector;
         mGson = new Gson();
+        if(mCalculator == null)
+        {
+            mCalculator = CalculatorImpl.getInstance(mLib, mWarnValue);
+        }
         mCalculator.prepare();
         //reset log output stream to log file
         try {
@@ -61,7 +74,6 @@ public class ImageBolt extends BaseRichBolt {
         String data = tuple.getString(0);
         String returnInfo = tuple.getValue(1).toString();
         Logger.log(TAG, "receive data:"+data);
-        Logger.log(TAG, "receive resultInfo:" + returnInfo);
         ImageInfo info = new ImageInfo();
         try
         {
@@ -78,16 +90,21 @@ public class ImageBolt extends BaseRichBolt {
                         .getData();
                 List<CalculateInfo> list = new ArrayList<CalculateInfo>(1);
                 list.add(new CalculateInfo(info.url, pixels, image.getHeight(), image.getWidth()));
-                Logger.log(TAG, "start predict "+new String(pixels));
+                Logger.log(TAG, "start predict "+info.url);
                 HashMap<String, Float> map = mCalculator.predict(list);
-                for(Map.Entry<String, Float> entry : map.entrySet())
+                if(map != null && map.size() > 0)
                 {
-                    info.value = entry.getValue();
-                    break;
+                    for (Map.Entry<String, Float> entry : map.entrySet()) {
+                        info.value = entry.getValue();
+                        break;
+                    }
+                    info.ok = info.value < mCalculator.getWarnValue();
+                    Logger.log(TAG, "predict " + info.url + " ok, value=" + info.value);
                 }
-                info.ok = info.value < mCalculator.getWarnValue();
-                Logger.log(TAG, "predict "+info.url+" ok, value="+info.value
-                        +" width="+image.getWidth()+", height="+image.getHeight()+" count="+map.size());
+                else
+                {
+                    Logger.log(TAG, "predict " + info.url + " fail");
+                }
             }
             else {
                 Logger.log(TAG, "fail downloading image form " + info.url);

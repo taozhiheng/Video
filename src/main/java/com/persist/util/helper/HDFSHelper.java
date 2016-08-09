@@ -17,6 +17,7 @@ import java.lang.String;
 public class HDFSHelper implements Serializable{
 
     private String ip;
+    private FileSystem fs;
 
     public HDFSHelper(String ip)
     {
@@ -77,15 +78,20 @@ public class HDFSHelper implements Serializable{
      * */
     public boolean upload(InputStream is, String remote)
     {
+
         String dst;
         if(ip != null)
             dst = ip +File.separator+ remote;
         else
             dst = remote;
-        Configuration conf = new Configuration();
+//        Configuration conf = new Configuration();
         try
         {
-            FileSystem fs = FileSystem.get(URI.create(dst), conf);
+//            FileSystem fs = FileSystem.get(URI.create(dst), conf);
+            if(fs == null)
+                open(dst);
+            if(fs == null)
+                return false;
             OutputStream out = fs.create(new Path(dst), new Progressable() {
                 public void progress() {
                     System.out.print(".");
@@ -147,10 +153,19 @@ public class HDFSHelper implements Serializable{
             dst = ip +File.separator+ remote;
         else
             dst = remote;
-        Configuration conf = new Configuration();
+//        Configuration conf = new Configuration();
         try {
-            FileSystem fs = FileSystem.get(URI.create(dst), conf);
-            FSDataInputStream fsDataInputStream = fs.open(new Path(dst));
+//            FileSystem fs = FileSystem.get(URI.create(dst), conf);
+            if(fs == null)
+                open(dst);
+            if(fs == null)
+                return false;
+            Path path = new Path(dst);
+            if(!fs.exists(path)) {
+                fs.close();
+                return false;
+            }
+            FSDataInputStream fsDataInputStream = fs.open(path);
             byte[] ioBuffer = new byte[1024];
             int readLen = fsDataInputStream.read(ioBuffer);
             while (-1 != readLen) {
@@ -158,7 +173,6 @@ public class HDFSHelper implements Serializable{
                 readLen = fsDataInputStream.read(ioBuffer);
             }
             fsDataInputStream.close();
-            fs.close();
             return true;
         }
         catch (IOException e)
@@ -179,16 +193,39 @@ public class HDFSHelper implements Serializable{
             dst = ip +File.separator+ remote;
         else
             dst = remote;
-        Configuration conf = new Configuration();
-        FileSystem fs;
+//        Configuration conf = new Configuration();
         try {
-            fs = FileSystem.get(URI.create(dst), conf);
+//            fs = FileSystem.get(URI.create(dst), conf);
+            if(fs == null)
+                open(dst);
+            if(fs == null)
+                return false;
             fs.deleteOnExit(new Path(dst));
             fs.close();
             return true;
         } catch (IOException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    private void open(String url)
+    {
+        try {
+            fs = FileSystem.get(URI.create(url), new Configuration());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void close()
+    {
+        if(fs != null) {
+            try {
+                fs.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

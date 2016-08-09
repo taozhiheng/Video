@@ -18,9 +18,9 @@ import java.util.Map;
  */
 public class SoTest {
 
-    public static void main(String[] args)
+    public static void main(String[] args) throws Exception
     {
-        CalculatorImpl calculator = new CalculatorImpl(args[0]);
+        CalculatorImpl calculator = CalculatorImpl.getInstance(args[0]);
         calculator.prepare();
         System.out.println("load ok");
 
@@ -49,8 +49,9 @@ public class SoTest {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
         }
-
+        System.out.println("start sleep 10s for test gpu usage status");
+        Thread.sleep(10*1000);
+        System.out.println("exit");
     }
 }

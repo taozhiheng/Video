@@ -63,7 +63,7 @@ public class AnalysisConfig {
     public String[] hbaseColumns = {"video_id", "time_stamp", "ok", "percent"};
 
     //the num to workers
-    public int workerNum = 3;
+    public int workerNum = 1;
 
     //the log dir which seems invisible
     public String log = "image_log";

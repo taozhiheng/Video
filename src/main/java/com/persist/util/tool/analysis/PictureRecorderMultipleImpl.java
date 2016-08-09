@@ -60,10 +60,14 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
     public boolean recordResult(PictureResult result) {
         boolean ok = false;
+
+        if(result == null || result.description == null)
+            return false;
+
         if(mHelper == null)
             initHBase();
 
-        if(mHelper != null)
+        if(mHelper != null )
         {
             try {
                 mHelper.addRow(tableName, result.description.url, columnFamily,columns,
@@ -84,7 +88,7 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
                 {
                     mHelper.addRow(yellowTableName, result.description.url, columnFamily,columns,
                             new String[]{result.description.video_id, result.description.time_stamp,
-                                    String.valueOf(true), String.valueOf(result.percent)});
+                                    String.valueOf(false), String.valueOf(result.percent)});
                 }
                 //将记录按小时写入到不同的表中
                 long time = Long.valueOf(result.description.time_stamp);

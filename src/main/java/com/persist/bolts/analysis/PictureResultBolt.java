@@ -12,6 +12,7 @@ import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.Logger;
+import com.persist.util.tool.analysis.CalculatorImpl;
 import com.persist.util.tool.analysis.IPictureCalculator;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
@@ -34,8 +35,16 @@ public class PictureResultBolt extends BaseRichBolt {
     private IPictureCalculator mCalculator;
     private Gson mGson;
 
+    private String mlib;
+    private float mWarnValue;
 
-    public PictureResultBolt(IPictureCalculator calculator)
+    public PictureResultBolt(String lib, float warnValue)
+    {
+        this.mlib = lib;
+        this.mWarnValue = warnValue;
+    }
+
+    private PictureResultBolt(IPictureCalculator calculator)
     {
         this.mCalculator = calculator;
     }
@@ -44,6 +53,7 @@ public class PictureResultBolt extends BaseRichBolt {
     @Override
     public void cleanup() {
         super.cleanup();
+        mCalculator.cleanup();
     }
 
     /**
@@ -54,6 +64,10 @@ public class PictureResultBolt extends BaseRichBolt {
         this.mCollector = outputCollector;
         this.mGson = new Gson();
         Logger.log(TAG, "prepare PictureResultBolt");
+        if(mCalculator == null)
+        {
+            mCalculator = CalculatorImpl.getInstance(mlib, mWarnValue);
+        }
         mCalculator.prepare();
         try {
             Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
@@ -69,24 +83,38 @@ public class PictureResultBolt extends BaseRichBolt {
      * */
     public void execute(Tuple tuple) {
         String data = tuple.getString(0);
-        Logger.log(TAG, "resolve result:"+data);
-        PictureKey pictureKey = new PictureKey();
+        Logger.log(TAG, "resolve: "+data);
+        PictureKey pictureKey;
         try {
             pictureKey = mGson.fromJson(data, PictureKey.class);
-        } catch (JsonSyntaxException e) {
+            if(pictureKey != null)
+            {
+                List<PictureResult> list = mCalculator.calculateImage(pictureKey);
+                if (list != null && list.size() > 0)
+                {
+                    for (PictureResult result : list)
+                    {
+                        mCollector.emit(new Values(result));
+                        if (result.description != null)
+                            Logger.log(TAG, "emit result: " + result.description.url + ", " + result.percent);
+                    }
+                }
+                else
+                {
+                    Logger.log(TAG, "submit " + pictureKey.url + " to buffer");
+                }
+            }
+        }
+        catch (JsonSyntaxException e)
+        {
             e.printStackTrace();
             Logger.log(TAG, "JsonSyntaxException:"+e.getMessage());
         }
-        List<PictureResult> list = mCalculator.calculateImage(pictureKey);
-        if(list != null && list.size() > 0)
+        finally
         {
-            for(PictureResult result : list)
-            {
-                mCollector.emit(new Values(result));
-                Logger.log(TAG, "emit result:"+result.description.url+", "+result.percent);
-            }
+            mCollector.ack(tuple);
         }
-        mCollector.ack(tuple);
+
     }
 
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {

@@ -1,5 +1,6 @@
 package com.persist;
 
+import backtype.storm.generated.DRPCExecutionException;
 import backtype.storm.utils.DRPCClient;
 
 /**
@@ -23,9 +24,14 @@ public class ImageQuery {
         for(int i = 3; i < args.length; i++)
         {
             System.out.println("Query "+args[i]);
-            result = client.execute(func, "{\"url\":\""+args[i]+"\"}");
-            System.out.println("The result of "+args[i]+":");
-            System.out.println(result);
+            try {
+                result = client.execute(func, "{\"url\":\"" + args[i] + "\"}");
+                System.out.println("The result of " + args[i] + ":");
+                System.out.println(result);
+            }catch (DRPCExecutionException e)
+            {
+                e.printStackTrace();
+            }
         }
     }
 }

@@ -61,14 +61,19 @@ public class PictureNotifierImpl implements IPictureNotifier {
         initGson();
     }
 
-    public void notifyResult(PictureResult result) {
+    public boolean notifyResult(PictureResult result) {
+        boolean ok = false;
         if(mJedis == null) {
             initJedis();
         }
         if(mGson == null)
             initGson();
-        String msg = mGson.toJson(result);
-        mJedis.publish(result.description.video_id, msg);
+        if(mJedis != null && result.description != null && result.description.video_id != null) {
+            String msg = mGson.toJson(result);
+            mJedis.publish(result.description.video_id, msg);
+            ok = true;
+        }
+        return ok;
     }
 
     public void stop() {
