@@ -5,6 +5,8 @@ import java.io.Serializable;
 /**
  * Created by taozhiheng on 16-8-2.
  *
+ * base data to analysis image
+ *
  */
 public class CalculateInfo implements Serializable{
 

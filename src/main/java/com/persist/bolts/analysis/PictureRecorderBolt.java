@@ -6,19 +6,15 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
 import com.persist.bean.analysis.PictureResult;
-import com.persist.util.helper.Logger;
+import com.persist.util.helper.FileLogger;
 import com.persist.util.tool.analysis.IPictureRecorder;
-import com.persist.util.tool.grab.IVideoNotifier;
-import com.persist.util.tool.grab.VideoNotifierImpl;
-
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.util.Map;
 
 /**
  * Created by taozhiheng on 16-7-13.
  *
- * record the result from PictureNotifierBolt(actually, PictureResultBolt)
+ * record results to hbase
+ *
  */
 public class PictureRecorderBolt  extends BaseRichBolt {
 
@@ -26,6 +22,11 @@ public class PictureRecorderBolt  extends BaseRichBolt {
 
     private IPictureRecorder mRecorder;
     private OutputCollector mCollector;
+
+    private FileLogger mLogger;
+
+    private int id;
+    private long count = 0;
 
     public PictureRecorderBolt(IPictureRecorder recorder) {
         this.mRecorder = recorder;
@@ -35,20 +36,17 @@ public class PictureRecorderBolt  extends BaseRichBolt {
      * init recorder, actually init HBaseHelper
      * */
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        Logger.log(TAG, "prepare PictureNotifierBolt");
         this.mCollector = outputCollector;
         mRecorder.prepare();
-        try {
-            Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
+        id = topologyContext.getThisTaskId();
+        mLogger = new FileLogger("picture-record@"+id);
+        mLogger.log(TAG+"@"+id, "prepare");
     }
 
     @Override
     public void cleanup() {
         mRecorder.stop();
+        mLogger.close();
     }
 
     /**
@@ -56,11 +54,19 @@ public class PictureRecorderBolt  extends BaseRichBolt {
      * */
     public void execute(Tuple tuple) {
         PictureResult result = (PictureResult) tuple.getValue(0);
-        boolean status = mRecorder.recordResult(result);
+        count++;
+        String tag = null;
         if(result.description != null)
-            Logger.log(TAG, "record: "
-                    +result.description.url+","+result.description.video_id+","+result.percent
-                    +" status:"+status);
+            tag = result.description.url;
+        mLogger.log(TAG+"@"+id, "prepare record: "+tag+","
+                +(tag == null? null : result.description.video_id)+","
+                +result.percent
+                +", total="+count);
+        boolean status = mRecorder.recordResult(result);
+        mLogger.log(TAG+"@"+id, "record:"+tag+","
+                +(tag == null? null : result.description.video_id)+","
+                +result.percent
+                +", status="+status);
         mCollector.ack(tuple);
     }
 

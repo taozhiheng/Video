@@ -1,8 +1,7 @@
 package com.persist.test;
 
 import com.persist.bean.analysis.CalculateInfo;
-import com.persist.util.tool.analysis.CalculatorImpl;
-
+import com.persist.util.tool.analysis.Predict;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -20,38 +19,37 @@ public class SoTest {
 
     public static void main(String[] args) throws Exception
     {
-        CalculatorImpl calculator = CalculatorImpl.getInstance(args[0]);
-        calculator.prepare();
+        Predict.init(args[0]);
         System.out.println("load ok");
 
         List<CalculateInfo> list = new ArrayList<CalculateInfo>();
         CalculateInfo calculateInfo;
         int size = args.length;
         byte[] pixels;
-        for(int i = 1; i < size; i++)
+        for(int i = 1; i < size*100; i++)
         {
             BufferedImage image = null;
             try {
-                image = ImageIO.read(new File(args[i]));
+                image = ImageIO.read(new File(args[i%(size-1)+1]));
                 pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-                calculateInfo = new CalculateInfo("url-"+i+"-"+args[i], pixels, image.getHeight(), image.getWidth());
+                calculateInfo = new CalculateInfo("url-"+i+"-"+args[i%(size-1)+1], pixels, image.getHeight(), image.getWidth());
                 list.add(calculateInfo);
 
-                System.out.println("add ok");
-                Map<String, Float> map = calculator.predict(list);
-                System.out.println("predict ok!");
+                long start = System.currentTimeMillis();
+                System.out.println("add ok, start triggerPredict at "+start);
+                Map<String, Float> map = Predict.predictProxy(list);
+                long stop = System.currentTimeMillis();
+                System.out.println("triggerPredict finish at "+stop);
                 System.out.println(map.size());
                 for (Map.Entry<String, Float> entry : map.entrySet()) {
                     System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue());
                 }
-                System.out.println();
+                System.out.println("time="+(stop-start)+" ms, size="+map.size());
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        System.out.println("start sleep 10s for test gpu usage status");
-        Thread.sleep(10*1000);
-        System.out.println("exit");
+
     }
 }

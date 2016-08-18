@@ -4,14 +4,14 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.*;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.*;
 
 /**
  * Created by taozhiheng on 16-7-12.
+ *
  * helper to handle hadoop hbase
+ *
  */
 public class HBaseHelper {
 
@@ -51,7 +51,8 @@ public class HBaseHelper {
 //            System.out.println("表已经存在");
 //            System.exit(0);
             return;
-        } else {
+        } else
+        {
             // 新建一个 scores 表的描述
             HTableDescriptor tableDesc = new HTableDescriptor(t);
             // 在描述里添加列族

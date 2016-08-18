@@ -1,12 +1,14 @@
 package com.persist.util.tool.grab;
 
-import com.persist.util.helper.Logger;
+import com.persist.util.helper.FileLogger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 /**
  * Created by taozhiheng on 16-7-20.
+ *
  */
 public class VideoNotifierImpl implements IVideoNotifier {
 
@@ -18,6 +20,8 @@ public class VideoNotifierImpl implements IVideoNotifier {
     private String password;
     private String[] channels;
 
+    private FileLogger mLogger;
+
     public VideoNotifierImpl(String host, int port, String password, String[] channels)
     {
         if(host == null || password == null)
@@ -26,6 +30,7 @@ public class VideoNotifierImpl implements IVideoNotifier {
         this.port = port;
         this.password = password;
         this.channels = channels;
+        mLogger = new FileLogger("redis");
     }
 
     private void initJedis()
@@ -36,13 +41,12 @@ public class VideoNotifierImpl implements IVideoNotifier {
         try {
             // JedisPool依赖于apache-commons-pools1
             JedisPoolConfig config = new JedisPoolConfig();
-            pool = new JedisPool(config, host, port, 3000, password);
+            pool = new JedisPool(config, host, port, 6000, password);
             mJedis = pool.getResource();
-//            Logger.log(TAG, pool.toString());
+            mLogger.log(TAG, "get redis");
         } catch (Exception e) {
-            e.printStackTrace();
-//            Logger.log(TAG, "redis exception");
-
+            e.printStackTrace(mLogger.getPrintWriter());
+            mLogger.getPrintWriter().flush();
         }
     }
 
@@ -64,14 +68,26 @@ public class VideoNotifierImpl implements IVideoNotifier {
         {
             for (String channel : channels)
             {
-                mJedis.publish(channel, msg);
+                try
+                {
+                    mJedis.publish(channel, msg);
+                }
+                catch (JedisConnectionException e)
+                {
+                    e.printStackTrace(mLogger.getPrintWriter());
+                    mLogger.getPrintWriter().flush();
+                    stop();
+                }
             }
         }
-//        Logger.log(TAG, "notify:" + msg);
     }
 
     public void stop() {
         if(mJedis != null)
+        {
             mJedis.close();
+            mJedis = null;
+            mLogger.log(TAG, "close redis");
+        }
     }
 }

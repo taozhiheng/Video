@@ -4,7 +4,9 @@ import java.io.Serializable;
 
 /**
  * Created by zhiheng on 2016/7/4.
+ *
  * Picture base info
+ *
  */
 public class PictureKey implements Serializable{
 

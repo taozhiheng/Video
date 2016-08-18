@@ -1,54 +1,70 @@
 package com.persist.kafka;
 
 import java.util.Properties;
-
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 /**
  * ���򵥵���producer
  * 
- * @author Administrator
+ * @author ZhihengTao
  *
  */
 public class KafkaNewProducer {
-	public org.apache.kafka.clients.producer.KafkaProducer<String, String> producer = null;
 
-	/**
-	 * ��ʼ�����ڷ��͵�KafkaProducer����
-	 * 
-	 * @param brokerList
-	 *            kafka�������ڵ��ַ
-	 */
+	private KafkaProducer<String, String> producer;
+
+	private boolean forceFlush;
+
 	public KafkaNewProducer(String brokerList) {
-		Properties pro = new Properties();
-		pro.put("bootstrap.servers", brokerList);
-		pro.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-		pro.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-		this.producer = new org.apache.kafka.clients.producer.KafkaProducer<String, String>(pro);
+		this(brokerList, false);
 	}
 
-	/**
-	 * ��ָ����topic������Ϣ
-	 * 
-	 * @param topic
-	 * @param message
-	 * @throws Exception
-	 */
-	public void send(String topic, String message) throws Exception {
-		if (producer != null) {
-			producer.send(new ProducerRecord<String, String>(topic, message));
-			// System.out.println("Send:" + message);
-		} else {
-			throw new Exception("Producer is null!");
-		}
+	public KafkaNewProducer(String brokerList, boolean forceFlush)
+	{
+		Properties properties = new Properties();
+		properties.put("bootstrap.servers", brokerList);
+		properties.put("acks", "all");
+		properties.put("linger.ms", 5);
+		properties.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		properties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		this.producer = new KafkaProducer<String, String>(properties);
+		this.forceFlush = forceFlush;
 	}
 
-	/**
-	 * �ر�producer������
-	 */
+	public void setForceFlush(boolean forceFlush)
+	{
+		this.forceFlush = forceFlush;
+	}
+
+	public boolean getForceFlush()
+	{
+		return forceFlush;
+	}
+
+	public boolean send(String topic, String message)
+	{
+		return send(topic, message, null);
+	}
+
+
+	public boolean send(String topic, String message, Callback callback)
+	{
+		if(producer == null)
+			return false;
+		producer.send(new ProducerRecord<String, String>(topic, message), callback);
+		if(forceFlush)
+			producer.flush();
+		return true;
+	}
+
+
 	public void close() {
-		if (producer != null)
+		if (producer != null) {
 			producer.close();
+			producer = null;
+		}
 	}
 
 }

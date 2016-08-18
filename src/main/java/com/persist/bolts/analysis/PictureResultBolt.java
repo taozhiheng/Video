@@ -9,51 +9,52 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.persist.bean.analysis.CalculateInfo;
 import com.persist.bean.analysis.PictureKey;
-import com.persist.bean.analysis.PictureResult;
-import com.persist.util.helper.Logger;
-import com.persist.util.tool.analysis.CalculatorImpl;
-import com.persist.util.tool.analysis.IPictureCalculator;
-import com.persist.util.tool.grab.IVideoNotifier;
-import com.persist.util.tool.grab.VideoNotifierImpl;
-
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.util.List;
+import com.persist.util.helper.FileLogger;
+import com.persist.util.helper.HDFSHelper;
+import com.persist.util.helper.ImageHepler;
+import com.persist.util.tool.analysis.Predict;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+import java.io.*;
 import java.util.Map;
 
 /**
  * Created by zhiheng on 2016/7/5.
- * calculate images from PictureEntityBolt
- * and distribute them to PictureResultBolt
+ *
+ * resolve image info from json string,
+ * download image form url,
+ * try to trigger PictureCalculateBolt to predict
+ *
  */
 public class PictureResultBolt extends BaseRichBolt {
 
     private final static String TAG = "PictureResultBolt";
 
     private OutputCollector mCollector;
-    private IPictureCalculator mCalculator;
     private Gson mGson;
+    private HDFSHelper mHelper;
+    private int mWidth = 227;
+    private int mHeight = 227;
 
-    private String mlib;
-    private float mWarnValue;
+    private FileLogger mLogger;
+    private int id;
+    private long count = 0;
 
-    public PictureResultBolt(String lib, float warnValue)
+    public PictureResultBolt(int width, int height)
     {
-        this.mlib = lib;
-        this.mWarnValue = warnValue;
-    }
-
-    private PictureResultBolt(IPictureCalculator calculator)
-    {
-        this.mCalculator = calculator;
+        this.mWidth = width;
+        this.mHeight = height;
     }
 
 
     @Override
     public void cleanup() {
         super.cleanup();
-        mCalculator.cleanup();
+        mHelper.close();
+        mLogger.close();
     }
 
     /**
@@ -63,18 +64,10 @@ public class PictureResultBolt extends BaseRichBolt {
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.mCollector = outputCollector;
         this.mGson = new Gson();
-        Logger.log(TAG, "prepare PictureResultBolt");
-        if(mCalculator == null)
-        {
-            mCalculator = CalculatorImpl.getInstance(mlib, mWarnValue);
-        }
-        mCalculator.prepare();
-        try {
-            Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
+        mHelper = new HDFSHelper(null);
+        id = topologyContext.getThisTaskId();
+        mLogger = new FileLogger("picture-result@"+id);
+        mLogger.log(TAG+"@"+id, "prepare");
     }
 
     /**
@@ -83,32 +76,45 @@ public class PictureResultBolt extends BaseRichBolt {
      * */
     public void execute(Tuple tuple) {
         String data = tuple.getString(0);
-        Logger.log(TAG, "resolve: "+data);
+        mLogger.log(TAG+"@"+id, "receive kafka msg: "+data);
         PictureKey pictureKey;
         try {
+            //resolve json string
             pictureKey = mGson.fromJson(data, PictureKey.class);
             if(pictureKey != null)
             {
-                List<PictureResult> list = mCalculator.calculateImage(pictureKey);
-                if (list != null && list.size() > 0)
-                {
-                    for (PictureResult result : list)
+                try {
+                    ByteArrayOutputStream os = new ByteArrayOutputStream();
+                    //download image
+                    if(pictureKey.url != null && mHelper.download(os, pictureKey.url))
                     {
-                        mCollector.emit(new Values(result));
-                        if (result.description != null)
-                            Logger.log(TAG, "emit result: " + result.description.url + ", " + result.percent);
+                        InputStream in = new ByteArrayInputStream(os.toByteArray());
+                        BufferedImage image = ImageIO.read(in);
+                        if (image.getWidth() != mWidth || image.getHeight() != mHeight)
+                            image = ImageHepler.resize(image, mWidth, mHeight);
+                        byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
+                                .getData();
+                        //put image to prediction buffer
+                        boolean ready = Predict.append(pictureKey, new CalculateInfo(pictureKey.url,pixels, mWidth, mHeight));
+                        count++;
+                        mLogger.log(TAG+"@"+id, "append "+pictureKey.url+" ok, ready="+ready+", total="+count);
+                        if(ready)
+                        {
+                            //trigger prediction
+                            mCollector.emit(new Values(true));
+                        }
                     }
-                }
-                else
-                {
-                    Logger.log(TAG, "submit " + pictureKey.url + " to buffer");
+                    os.close();
+                } catch (IOException e) {
+                    e.printStackTrace(mLogger.getPrintWriter());
+                    mLogger.getPrintWriter().flush();
                 }
             }
         }
         catch (JsonSyntaxException e)
         {
-            e.printStackTrace();
-            Logger.log(TAG, "JsonSyntaxException:"+e.getMessage());
+            e.printStackTrace(mLogger.getPrintWriter());
+            mLogger.getPrintWriter().flush();
         }
         finally
         {
@@ -118,6 +124,6 @@ public class PictureResultBolt extends BaseRichBolt {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declare(new Fields("result"));
+        outputFieldsDeclarer.declare(new Fields("signal"));
     }
 }

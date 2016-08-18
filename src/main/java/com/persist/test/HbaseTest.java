@@ -1,12 +1,11 @@
 package com.persist.test;
 
 import com.persist.util.helper.HBaseHelper;
-
 import java.util.List;
-import java.util.Scanner;
 
 /**
  * Created by taozhiheng on 16-7-30.
+ *
  */
 public class HbaseTest {
 

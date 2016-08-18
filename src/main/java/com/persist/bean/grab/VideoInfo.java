@@ -5,6 +5,8 @@ import java.io.Serializable;
 /**
  * Created by taozhiheng on 16-7-15.
  *
+ * video message info
+ *
  */
 public class VideoInfo implements Serializable{
 

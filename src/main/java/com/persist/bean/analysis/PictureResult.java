@@ -4,7 +4,9 @@ import java.io.Serializable;
 
 /**
  * Created by zhiheng on 2016/7/4.
- * Picture base info and deal result
+ *
+ * Picture base info and result
+ *
  */
 public class PictureResult implements Serializable{
     //the description of the picture

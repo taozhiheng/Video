@@ -8,17 +8,22 @@ import backtype.storm.topology.TopologyBuilder;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.image.CheckConfig;
-import com.persist.bolts.image.ImageBolt;
+import com.persist.bolts.image.DownloadBolt;
+import com.persist.bolts.image.UrlBolt;
+import com.persist.bolts.image.PredictBolt;
 import com.persist.bolts.image.ReturnBolt;
 import com.persist.util.helper.FileHelper;
 import com.persist.util.helper.Logger;
-import com.persist.util.tool.analysis.CalculatorImpl;
-
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 
 /**
  * Created by taozhiheng on 16-8-3.
+ *
+ * build and submit a drpc topology to analysis pictures
+ *
+ * Note:
+ * "storm drpc" should be executed  to start drpc service before create the topology
  *
  */
 public class ImageCheck {
@@ -26,7 +31,9 @@ public class ImageCheck {
     private final static String TAG = "ImageCheck";
 
     private final static String INPUT_SPOUT = "input-spout";
-    private final static String DEAL_BOLT = "deal_bolt";
+    private final static String URL_BOLT = "url_bolt";
+    private final static String DOWNLOAD_BOLT = "download-bolt";
+    private final static String PREDICT_BOLT = "predict_bolt";
     private final static String RETURN_BOLT = "return-bolt";
 
     public static void main(String[] args) throws Exception
@@ -34,7 +41,7 @@ public class ImageCheck {
 
         //reset log output stream to log file
         try {
-            Logger.setOutput(new FileOutputStream("DRPCServer", true));
+            Logger.setOutput(new FileOutputStream("ImageCheck", true));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
             Logger.setDebug(false);
@@ -47,27 +54,33 @@ public class ImageCheck {
 
         //load config from file "config.json" in current directory
         CheckConfig baseConfig = new CheckConfig();
+        Gson gson = new Gson();
         try
         {
-            Gson gson = new Gson();
             baseConfig = gson.fromJson(FileHelper.readString(configPath), CheckConfig.class);
         }
         catch (JsonSyntaxException e)
         {
             e.printStackTrace();
         }
+
+        Logger.log(TAG, "configPath:"+configPath);
+        Logger.log(TAG, gson.toJson(baseConfig));
+
         TopologyBuilder builder = new TopologyBuilder();
-
-//        CalculatorImpl calculator = new CalculatorImpl(baseConfig.so);
-
         DRPCSpout drpcSpout = new DRPCSpout(baseConfig.function);
         builder.setSpout(INPUT_SPOUT, drpcSpout, baseConfig.drpcSpoutParallel);
-        builder.setBolt(DEAL_BOLT, new ImageBolt(baseConfig.so, baseConfig.warnValue), baseConfig.imageBoltParallel)
+        builder.setBolt(URL_BOLT, new UrlBolt(), baseConfig.urlBoltParallel)
                 .shuffleGrouping(INPUT_SPOUT);
+        builder.setBolt(DOWNLOAD_BOLT, new DownloadBolt(baseConfig.width, baseConfig.height),
+                baseConfig.downloadBoltParallel)
+                .shuffleGrouping(URL_BOLT);
+        builder.setBolt(PREDICT_BOLT, new PredictBolt(baseConfig.so, baseConfig.warnValue), 1)
+                .shuffleGrouping(DOWNLOAD_BOLT);
         builder.setBolt(RETURN_BOLT, new ReturnBolt(), baseConfig.returnBoltParallel)
-                .shuffleGrouping(DEAL_BOLT);
+                .shuffleGrouping(PREDICT_BOLT);
 //        builder.setBolt(RETURN_BOLT, new ReturnResults(), 3)
-//                .shuffleGrouping(DEAL_BOLT);
+//                .shuffleGrouping(IMAGE_BOLT);
 
 
         Config conf = new Config();
@@ -76,20 +89,14 @@ public class ImageCheck {
             conf.setDebug(false);
             conf.setNumWorkers(baseConfig.workerNum);
             StormSubmitter.submitTopology(args[1], conf, builder.createTopology());
-
+            Logger.log(TAG, "submit remote topology: "+args[1]+", function is: "+baseConfig.function);
         } else {
             conf.setDebug(true);
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology("image-check", conf, builder.createTopology());
-//            LocalDRPC drpc = new LocalDRPC();
-//            for (String word : new String[]{"hello", "goodbye"}) {
-//                Logger.log(TAG, "Result for \"" + word + "\": " + drpc.execute("image-check", word));
-//            }
-//            Logger.log(TAG, "submit local topology and test");
-//            cluster.shutdown();
-//            drpc.shutdown();
+            cluster.submitTopology("ImageCheck", conf, builder.createTopology());
+            Logger.log(TAG, "submit local topology: ImageCheck, function is: "+baseConfig.function);
         }
-        Logger.log(TAG, "create drpc topology, function is image-check");
+        Logger.close();
 
     }
 }

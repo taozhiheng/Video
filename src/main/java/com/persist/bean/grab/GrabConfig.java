@@ -2,12 +2,9 @@ package com.persist.bean.grab;
 
 /**
  * Created by taozhiheng on 16-7-12.
- * base config:
- * parallelism config
- * zookeeper and storm config
- * redis server config
- * hbase config
- * log config
+ *
+ * base config for grab frames from video(rtmp)
+ *
  */
 public class GrabConfig {
 
@@ -49,6 +46,9 @@ public class GrabConfig {
 
     //the format to name pictures
     public String nameFormat = "frame-%05d-%d.png";
+
+    //the frame rate to grab
+    public double frameRate = 1.0;
 
     //the num to workers
     public int workerNum = 3;

@@ -4,11 +4,13 @@ import com.google.gson.Gson;
 import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.grab.VideoInfo;
 import com.persist.kafka.KafkaNewProducer;
+import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HDFSHelper;
 import com.persist.util.helper.ImageHepler;
-import com.persist.util.helper.Logger;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacv.*;
 import javax.imageio.ImageIO;
@@ -18,12 +20,16 @@ import java.lang.management.ManagementFactory;
 
 /**
  * Created by taozhiheng on 16-7-19.
+ *
  * this class should be invoked as a child process
+ *
  * grab rtmp and write data to hdfs
+ *
  */
 public class GrabThread extends Thread{
 
     private final static String TAG = "Grab";
+    private final static int FAIL_LIMIT = 20;
 
     private HDFSHelper mHelper;
     private String mUrl;
@@ -35,6 +41,8 @@ public class GrabThread extends Thread{
     private String mFormat = "picture-%05d-%d.png";
     private int mWidth = 227;
     private int mHeight = 227;
+    //grab rate
+    private double mGrabRate = 1.0;
 
     private boolean mIsRunning;
     private boolean mIsActive;
@@ -45,16 +53,21 @@ public class GrabThread extends Thread{
     private IVideoNotifier mNotifier;
 
     private KafkaNewProducer mProducer;
+    private Callback mCallback;
+
     private String mTopic;
 
     private Gson mGson;
 
+    private FileLogger mLogger;
 
-
-    public GrabThread(String url, String dir, IVideoNotifier notifier, String topic, String brokerList)
+    public GrabThread(String url, String dir, IVideoNotifier notifier, String topic, String brokerList, FileLogger logger)
     {
         mUrl = url;
         mDir = dir;
+        String id = String.valueOf(Math.abs(url.hashCode()));
+        mFormat = id +"-%05d-%d.png";
+        mLogger = logger;
         mHelper = new HDFSHelper(dir);
         mGrabber = new FFmpegFrameGrabber(url);
         mIlplImageConverter = new OpenCVFrameConverter.ToIplImage();
@@ -62,9 +75,21 @@ public class GrabThread extends Thread{
         mNotifier = notifier;
         mTopic = topic;
         //brokerList: ip:port,ip:port...
-        if(brokerList != null && brokerList.length() > 2)
-            mProducer = new KafkaNewProducer(brokerList);
+        if(brokerList != null && brokerList.length() > 2) {
+            mProducer = new KafkaNewProducer(brokerList, true);
+            mCallback = new Callback() {
+                public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                    if(e != null) {
+                        mLogger.log(mUrl, "Kafka Exception:");
+                        e.printStackTrace(mLogger.getPrintWriter());
+                        mLogger.getPrintWriter().flush();
+                    }
+                    mLogger.log(mUrl, "The offset of the record is: "+recordMetadata.offset());
+                }
+            };
+        }
         mGson = new Gson();
+
     }
 
     public FFmpegFrameGrabber getGrabber()
@@ -91,41 +116,115 @@ public class GrabThread extends Thread{
         mIsActive = true;
 
         Frame frame = null;
-        opencv_core.IplImage image;
+        opencv_core.IplImage image = null;
         int oldW;
         int oldH;
-        int h;
-        BufferedImage bi;
-        String fileName;
-        boolean res;
+        BufferedImage bi = null;
+        ByteArrayOutputStream baos = null;
+//        OutputStream baos = null;
+        String fileName = null;
+        boolean res = false;
         long time;
+        int expectNumber = 0;
+        int grabStep = 1;
+        int lastNumber = -1;
+        int frameNumber = 0;
+        boolean setOK = true;
+        int realStep;
+        int errorTimes = 0;
+        boolean isFirst = true;
+
         PictureKey pictureKey = new PictureKey();
         try
         {
             mNotifier.notify("prepare to start grabbing video from"+mUrl);
-            Logger.log(mUrl, "prepare to start grabbing");
+            mLogger.log(mUrl, "prepare to start grabbing");
+            mGrabber.setTimeout(3000);
             mGrabber.start();
-            mNotifier.notify("finish starting");
-            Logger.log(mUrl, "finish starting");
+            double frameRate = mGrabber.getFrameRate();
+            grabStep = (int) (frameRate/mGrabRate);
+            mNotifier.notify("finish starting, " +
+                    "frameRate="+frameRate
+                    +", frameLength=" + mGrabber.getLengthInFrames()
+                    +", grabStep="+grabStep);
+            mLogger.log(mUrl, "finish starting, " +
+                    "frameRate="+frameRate
+                    +", frameLength="+mGrabber.getLengthInFrames()
+                    +", grabStep="+grabStep);
             while (mIsRunning)
             {
 
                 if(!mIsActive)
                 {
-                    Logger.log(mUrl, "in pause");
+                    mLogger.log(mUrl, "in pause");
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        e.printStackTrace(mLogger.getPrintWriter());
+                        mLogger.getPrintWriter().flush();
                     }
                     continue;
                 }
-                //this is a block method
-//                frame = mGrabber.grabFrame(false, true, true, false);
-                frame = mGrabber.grab();
-                image = mIlplImageConverter.convertToIplImage(frame);
+                mNotifier.notify("prepare to grab frame " + mCount+"/"+mIndex);
+                mLogger.log(mUrl, "prepare to grab frame " + mCount+"/"+mIndex);
+                //set frame number
+                //if set frame number ok last time, append grabStep, else append 1
+                if(grabStep > 1 && !isFirst)
+                {
+                    if(setOK)
+                        realStep = grabStep;
+                    else
+                        realStep = 1;
+                    expectNumber += realStep;
+                    try {
+                        mGrabber.setFrameNumber(expectNumber);
+                        setOK = true;
+                        errorTimes = 0;
+                    } catch (FrameGrabber.Exception e) {
+                        e.printStackTrace(mLogger.getPrintWriter());
+                        mLogger.getPrintWriter().flush();
+                        //reset expect number, and tag setOk=false
+                        expectNumber -= realStep;
+                        if(!setOK)
+                        {
+                            errorTimes++;
+                            //fail too many time, restart grab
+                            if(errorTimes >= FAIL_LIMIT && restartGrab()) {
+                                errorTimes = 0;
+                                isFirst = true;
+                                expectNumber = 0;
+                            }
+                        }
+                        setOK = false;
+                        continue;
+                    }
+                }
+                //grab image
+                try {
+                    frame = mGrabber.grabImage();
+                    if(frame != null && isFirst)
+                        isFirst = false;
+                    frameNumber = mGrabber.getFrameNumber();
+                    mLogger.log(TAG, "frame number="+frameNumber);
+                    //grab the same frame, continue
+                    if(frameNumber == lastNumber) {
+                        mLogger.log(TAG, "grab same frame: "+frame);
+                        continue;
+                    }
+                    //grab different frame, record the frame number
+                    else
+                    {
+                        lastNumber = frameNumber;
+                    }
+                } catch (FrameGrabber.Exception e) {
+                    e.printStackTrace(mLogger.getPrintWriter());
+                    mLogger.getPrintWriter().flush();
+                    continue;
+                }
+
                 mNotifier.notify("grab frame " + mCount+"/"+mIndex);
-                Logger.log(mUrl, "grab frame " + mCount+"/"+mIndex);
+                mLogger.log(mUrl, "grab frame " + mCount+"/"+mIndex);
+                image = mIlplImageConverter.convertToIplImage(frame);
                 if(image != null)
                 {
                     //resize image
@@ -134,84 +233,135 @@ public class GrabThread extends Thread{
                     bi = new BufferedImage(oldW, oldH, BufferedImage.TYPE_3BYTE_BGR);
                     bi.getGraphics().drawImage(mImageConverter.getBufferedImage(frame), 0, 0, oldW, oldH, null);
                     bi = ImageHepler.resize(bi, mWidth, mHeight);
-                    Logger.log(mUrl, "size: "+bi.getWidth()+"*"+bi.getHeight());
-                    //store image to hdfs
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    ImageIO.write(bi, "png", baos);
+                    mLogger.log(mUrl, "size: "+bi.getWidth()+"*"+bi.getHeight());
+                    //write image to byte array output stream
+                    baos = new ByteArrayOutputStream();
+                    try {
+//                        baos = new FileOutputStream(mDir+File.separator+String.format(mFormat, mCount, System.currentTimeMillis()));
+                        ImageIO.write(bi, "png", baos);
+                    } catch (IOException e) {
+                        e.printStackTrace(mLogger.getPrintWriter());
+                        mLogger.getPrintWriter().flush();
+                    }
+                    //write data in byte array output stream to hdfs
                     InputStream is = new ByteArrayInputStream(baos.toByteArray());
                     time = System.currentTimeMillis();
                     fileName = String.format(mFormat, mCount, time);
                     res = mHelper.upload(is, fileName);
+                    try {
+                        baos.close();
+                        baos = null;
+                    } catch (IOException e) {
+                        e.printStackTrace(mLogger.getPrintWriter());
+                        mLogger.getPrintWriter().flush();
+                    }
                     mNotifier.notify("write frame " + mCount+" to "+fileName+", "+res);
-                    Logger.log(mUrl, "write frame " + mCount+" to "+fileName+", "+res);
+                    mLogger.log(mUrl, "write frame " + mCount+" to "+fileName+", "+res);
                     //send message to kafka
                     pictureKey.url = mDir+File.separator+fileName;
                     pictureKey.video_id = mUrl;
                     pictureKey.time_stamp = String.valueOf(time);
-                    try {
-                        if(mProducer != null) {
-                            String msg = mGson.toJson(pictureKey);
-                            mProducer.send(mTopic, msg);
-                            Logger.log(mUrl, "send kafka msg:"+msg);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        Logger.log(mUrl, "Producer send message Exception, when send:"+
-                                pictureKey.url+", "+pictureKey.video_id+","+pictureKey.time_stamp);
+                    if(mProducer != null)
+                    {
+                        String msg = mGson.toJson(pictureKey);
+                        //Note:
+                        //the process may be blocked even dead when kafka Error happened such as:
+                        //org.apache.kafka.common.errors.InvalidTimestampException:
+                        //The timestamp of the message is out of acceptable range.
+                        //(The Exception will be displayed in mCallback, I know neither the reason nor how to fix it!!!)
+                        mProducer.send(mTopic, msg, mCallback);
+                        mLogger.log(mTopic, "send kafka msg:"+msg);
                     }
-
                     mCount++;
                 }
                 else
                 {
-                    Logger.log(mUrl, "sorry, the image of frame "+mIndex+" is null");
+                    mLogger.log(mUrl, "sorry, the image of frame "+mIndex+" is null");
                 }
                 mIndex++;
             }
             mNotifier.notify("grabbing total: " + mCount+"/"+mIndex+" in "+mUrl);
-            Logger.log(mUrl, "grabbing total: " + mCount+"/"+mIndex);
-            mNotifier.stop();
-            mHelper.close();
+            mLogger.log(mUrl, "grabbing total: " + mCount+"/"+mIndex);
+
+            mGrabber.stop();
+            mGrabber.release();
+
         }
         catch (FrameGrabber.Exception e)
         {
-            e.printStackTrace();
-            Logger.log(mUrl, "Frame Exception when grabbing");
+            e.printStackTrace(mLogger.getPrintWriter());
+            mLogger.getPrintWriter().flush();
         }
-        catch (IOException e)
+        finally {
+            clear();
+        }
+    }
+
+    /**
+     * release resources
+     * */
+    private void clear()
+    {
+        if(mNotifier != null)
         {
-            e.printStackTrace();
-            Logger.log(mUrl, "IO Exception when grabbing");
+            mNotifier.stop();
+            mNotifier = null;
+        }
+
+        if(mHelper != null)
+        {
+            mHelper.close();
+            mHelper = null;
+        }
+
+        if(mProducer != null)
+        {
+            mProducer.close();
+            mProducer = null;
+        }
+
+        if(mLogger != null)
+        {
+            mLogger.close();
+            mLogger = null;
         }
     }
 
     /**
      * start grabbing
      * */
-    private void startGrab()
+    private boolean startGrab()
     {
         mIsRunning = true;
         mIsActive = true;
         try {
             mGrabber.start();
+            mNotifier.notify("start grabbing");
+            mLogger.log(mUrl, "start grabbing");
+            return true;
         } catch (FrameGrabber.Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(mLogger.getPrintWriter());
+            mLogger.getPrintWriter().flush();
+            return false;
         }
-        mNotifier.notify("start grabbing");
-        Logger.log(mUrl, "start grabbing");
+
     }
 
     /**
      * restart grabbing
+     * @see #grab() has contains this, so no need to invoke it
      * */
-    private void restartGrab()
+    private boolean restartGrab()
     {
         mIsRunning = true;
         mIsActive = true;
         try {
             mGrabber.restart();
+            return true;
         } catch (FrameGrabber.Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(mLogger.getPrintWriter());
+            mLogger.getPrintWriter().flush();
+            return false;
         }
     }
 
@@ -223,7 +373,7 @@ public class GrabThread extends Thread{
         mIsRunning = false;
         mIsActive = false;
         mNotifier.notify("stop grabbing");
-        Logger.log(mUrl, "stop grabbing");
+        mLogger.log(mUrl, "stop grabbing");
     }
 
     /**
@@ -233,7 +383,7 @@ public class GrabThread extends Thread{
     {
         mIsActive = false;
         mNotifier.notify("pause grabbing");
-        Logger.log(mUrl, "pause grabbing");
+        mLogger.log(mUrl, "pause grabbing");
     }
 
     /**
@@ -243,7 +393,7 @@ public class GrabThread extends Thread{
     {
         mIsActive = true;
         mNotifier.notify("continue grabbing");
-        Logger.log(mUrl, "continue grabbing");
+        mLogger.log(mUrl, "continue grabbing");
     }
 
     public boolean isRunning()
@@ -266,10 +416,24 @@ public class GrabThread extends Thread{
         return mIndex;
     }
 
+    public double getGrabRate()
+    {
+        return mGrabRate;
+    }
+
+    /**
+     * set grab rate, how many frames to be grab each second
+     * default value: 1f
+     * */
+    public void setGrabRate(double rate)
+    {
+        if(rate > 0)
+            mGrabRate = rate;
+    }
 
     /**
      * set output format like mp4
-     * It seems that the method needn't be invoked when grab rtmp stream
+     * It seems that the method needn't be invoked
      * */
     public void setOutputFormat(String outputFormat)
     {
@@ -296,7 +460,9 @@ public class GrabThread extends Thread{
 
 
     /**
-     * listen msg
+     * listen message
+     * the thread should run only if the process is a child process,
+     * otherwise there will be some IOExceptions.
      * */
     static class ListenThread extends Thread
     {
@@ -332,7 +498,6 @@ public class GrabThread extends Thread{
             {
                 try {
                     msg = reader.readLine();
-//                    Logger.log(TAG, "Receive:"+msg);
                     if(listener != null)
                         listener.handleMessage(msg);
                     if(msg == null || STOP.equals(msg))
@@ -343,7 +508,7 @@ public class GrabThread extends Thread{
             }
         }
 
-        public void destory()
+        public void stopListen()
         {
             this.run = false;
         }
@@ -354,13 +519,18 @@ public class GrabThread extends Thread{
      * Note:
      * this method contains some test values which should be modify and rebuilt
      *
-     * the main method need at lease two arguments
-     * args[0] rtmp url
-     * args[2] hdfs absolute directory path (including ip or hostname)
+     * the main method need at lease 7 arguments
+     * args[0] redis host
+     * args[1] redis port
+     * args[2] redis password
+     * args[3] video rtmp url
+     * args[4] hdfs absolute directory path (including ip or hostname)
+     * args[5] kafka topic to send message
+     * args[6] kafka brokerList to send message
+     * args[7] file name format [optional]
      * */
     public static void main(String[] args)
     {
-        Logger.log(TAG, "enter GrabThread main");
 
         if(args.length < 7)
             throw new RuntimeException("the main method of GrabThread need at lease 7 arguments");
@@ -372,25 +542,31 @@ public class GrabThread extends Thread{
         String topic = args[5];
         String brokerList = args[6];
 
-        //this log file is just for test
-        try
-        {
-            Logger.setOutput(new FileOutputStream("VideoGrabber", true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
+        String name = ManagementFactory.getRuntimeMXBean().getName();
+        String pid = name.split("@")[0];
 
+        FileLogger logger = new FileLogger("GrabThread@"+pid);
 
         //this notifier is not needed
         IVideoNotifier notifier = new VideoNotifierImpl(
                 host, port,
                 password, new String[]{url});
 
-        final GrabThread grabThread = new GrabThread(url, dir, notifier, topic, brokerList);
-//        grabThread.setOutputFormat(format);
+        final GrabThread grabThread = new GrabThread(url, dir, notifier, topic, brokerList, logger);
+
         if(args.length >= 8)
-            grabThread.setNameFormat(args[7]);
+        {
+            try
+            {
+                double rate = Double.valueOf(args[7]);
+                grabThread.setGrabRate(rate);
+            }
+            catch (NumberFormatException e)
+            {
+                e.printStackTrace(logger.getPrintWriter());
+                logger.getPrintWriter().flush();
+            }
+        }
         grabThread.start();
 
         //start a ListenThread
@@ -412,18 +588,22 @@ public class GrabThread extends Thread{
                 }
             }
         });
-        listenThread.start();
+        if(brokerList != null && brokerList.length() > 2)
+            listenThread.start();
 
-        Logger.log(TAG, "GrabThread is running in "+ ManagementFactory.getRuntimeMXBean().getName());
+        logger.log(url, "Child process: GrabThread is running in "+pid);
 
         try {
             grabThread.join();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            e.printStackTrace(logger.getPrintWriter());
+            logger.getPrintWriter().flush();
         }
         finally {
-            listenThread.destory();
-            Logger.close();
+            listenThread.stopListen();
+            logger.log(url, "Child process: GrabThread  " + pid + " has exit");
+            logger.close();
+            System.exit(0);
         }
 
     }

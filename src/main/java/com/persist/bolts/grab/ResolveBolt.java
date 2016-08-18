@@ -10,16 +10,14 @@ import backtype.storm.tuple.Values;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.grab.VideoInfo;
-import com.persist.util.helper.Logger;
-import com.persist.util.tool.grab.IVideoNotifier;
-import com.persist.util.tool.grab.VideoNotifierImpl;
-
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import com.persist.util.helper.FileLogger;
 import java.util.Map;
 
 /**
  * Created by taozhiheng on 16-7-21.
+ *
+ * resolve video info from json string,
+ * and trigger GrabBolt to control grab processes
  *
  */
 public class ResolveBolt extends BaseRichBolt {
@@ -28,24 +26,27 @@ public class ResolveBolt extends BaseRichBolt {
     private Gson mGson;
     private OutputCollector mCollector;
 
+    private FileLogger mLogger;
+    private int id;
+    private long count = 0;
+
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         mGson = new Gson();
         mCollector = outputCollector;
-        try {
-            Logger.setOutput(new FileOutputStream("VideoGrabber", true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
+        id = topologyContext.getThisTaskId();
+        mLogger = new FileLogger("resolve@"+id);
+        mLogger.log(TAG+"@"+id, "prepare");
     }
 
     public void execute(Tuple tuple) {
         String data = (String) tuple.getValue(0);
-        Logger.log(TAG, "resolve data: "+data);
-        String url = null;
+        count++;
+        mLogger.log(TAG+"@"+id, "resolve data: "+data);
+        String url;
         VideoInfo videoInfo;
         try
         {
+            //resolve json string
             videoInfo = mGson.fromJson(data, VideoInfo.class);
             if(videoInfo != null)
             {
@@ -55,11 +56,13 @@ public class ResolveBolt extends BaseRichBolt {
         }
         catch (JsonSyntaxException e)
         {
-            Logger.log(TAG, "JsonSyntaxException:" + data);
+            e.printStackTrace(mLogger.getPrintWriter());
+            mLogger.getPrintWriter().flush();
             e.printStackTrace();
         }
         finally
         {
+            mLogger.log(TAG+"@"+id, "resolve msg total="+count);
             mCollector.ack(tuple);
         }
     }

@@ -5,6 +5,8 @@ import java.io.*;
 /**
  * Created by taozhiheng on 16-7-21.
  *
+ * send message from process to children processes
+ *
  */
 public class ProcessHelper {
 
@@ -20,6 +22,9 @@ public class ProcessHelper {
         writer.flush();
     }
 
+    /**
+     * close message pipe
+     * */
     public static void finishMessage(Process process)
     {
         OutputStream os = process.getOutputStream();

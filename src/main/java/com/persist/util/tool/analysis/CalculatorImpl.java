@@ -3,9 +3,9 @@ package com.persist.util.tool.analysis;
 import com.persist.bean.analysis.CalculateInfo;
 import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.analysis.PictureResult;
+import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HDFSHelper;
 import com.persist.util.helper.ImageHepler;
-import com.persist.util.helper.Logger;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -18,6 +18,8 @@ import java.util.Map;
 
 /**
  * Created by taozhiheng on 16-7-29.
+ *
+ * @deprecated
  *
  * Note:
  * the class name can't not be directly renamed.
@@ -32,11 +34,13 @@ public class CalculatorImpl implements IPictureCalculator {
     private Map<String, PictureKey> mInfoBuffer;
     private List<CalculateInfo> mBuffer;
     private int mBufferSize = 500;
-    private long mDuration = 2000;
+    private long mDuration = 5000;
     private long lastTime;
 
     private int mWidth = 227;
     private int mHeight = 227;
+
+    private FileLogger mLogger;
 
     private  static String so;
 
@@ -78,6 +82,7 @@ public class CalculatorImpl implements IPictureCalculator {
         mHelper = new HDFSHelper(null);
         mBuffer = new ArrayList<CalculateInfo>();
         mInfoBuffer = new HashMap<String, PictureKey>();
+        mLogger = new FileLogger("picture-calculate");
     }
 
     public void prepare() {
@@ -86,6 +91,7 @@ public class CalculatorImpl implements IPictureCalculator {
 
     public void cleanup() {
         mHelper.close();
+        mLogger.close();
     }
 
     public float getWarnValue()
@@ -95,8 +101,10 @@ public class CalculatorImpl implements IPictureCalculator {
 
     public synchronized List<PictureResult> calculateImage(PictureKey key) {
 
+        long from = System.currentTimeMillis();
         if(key == null)
             return null;
+
         //put data to buffer
         try {
             ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -117,11 +125,16 @@ public class CalculatorImpl implements IPictureCalculator {
         }
 
         long curTime = System.currentTimeMillis();
+        List<PictureResult> results = null;
+        long predictTime = 0;
+        mLogger.log(key.url+"@"+key.video_id, "prepare to triggerPredict");
+
         if(mBuffer.size() >= mBufferSize || ((key.url == null || curTime-lastTime >= mDuration) && mBuffer.size() > 0))
         {
             //calculate
+            long start = System.currentTimeMillis();
             HashMap<String, Float> map = predict(mBuffer);
-            List<PictureResult> results = null;
+            predictTime = System.currentTimeMillis()-start;
             if(map != null)
             {
                 //return
@@ -142,9 +155,10 @@ public class CalculatorImpl implements IPictureCalculator {
             mBuffer.clear();
             mInfoBuffer.clear();
             lastTime = curTime;
-            return results;
         }
-        return null;
+        long to = System.currentTimeMillis();
+        mLogger.log(key.url+"@"+key.video_id, "time="+(to-from)+" ms, triggerPredict-time="+predictTime+" ms, size="+(results == null ? 0 : results.size())+", buffer="+mBuffer.size());
+        return results;
     }
 
 
@@ -152,6 +166,7 @@ public class CalculatorImpl implements IPictureCalculator {
     {
         if(!hasLibrary)
         {
+            System.out.println("load library");
             if(so.contains(".so"))
                 System.load(so);
             else
@@ -160,15 +175,14 @@ public class CalculatorImpl implements IPictureCalculator {
         }
         if(images == null || images.size() == 0)
             return null;
-        return predict(images, 0, null, null, 102, 0);
+        return predict(images, 0, null, null, 512, 0);
     }
 
-    private static native HashMap<String, Float> predict(List<CalculateInfo> images,
+    public static native HashMap<String, Float> predict(List<CalculateInfo> images,
                                                   int reset,
                                                   String modelFile,
                                                   String trainedFile,
                                                   int batchSize,
                                                   int gpuId);
-
 
 }

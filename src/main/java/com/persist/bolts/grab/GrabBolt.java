@@ -6,29 +6,19 @@ import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
 import com.persist.bean.grab.VideoInfo;
-import com.persist.util.helper.Logger;
+import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.ProcessHelper;
 import com.persist.util.tool.grab.IGrabber;
-import com.persist.util.tool.grab.IVideoNotifier;
-import com.persist.util.tool.grab.VideoNotifierImpl;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by taozhiheng on 16-7-15.
- * GrabBolt will receive two types tuple:
- * First - grab:
- * Try to start a child process
- * to grab key frame pictures from video and store them,
- * and emit the tuple(url, process) to KillBolt
- * so that KillBolt can record the child process
- * Second - kill
- * emit the tuple(url, null) to KillBolt
- * so that KillBolt can kill the process specified by url
+ *
+ * control grab processes:
+ * add, stop, start, destroy
+ *
  */
 public class GrabBolt extends BaseRichBolt {
 
@@ -47,6 +37,12 @@ public class GrabBolt extends BaseRichBolt {
 
     private String mBrokerList;
     private String mSendTopic;
+
+
+    private FileLogger mLogger;
+    private int id;
+    private long count = 0;
+
 
     public GrabBolt(IGrabber grabber, int grabLimit, String sendTopic, String brokerList)
     {
@@ -67,20 +63,16 @@ public class GrabBolt extends BaseRichBolt {
     @Override
     public void cleanup() {
         super.cleanup();
-        Logger.close();
+        mLogger.close();
     }
 
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         mCollector = outputCollector;
         mProcessMap = new HashMap<String, Process>(mGrabLimit);
         mCurrentGrab = 0;
-        try {
-            Logger.setOutput(new FileOutputStream("VideoGrabber", true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
-        Logger.log(TAG, "prepare, current process status:"+mCurrentGrab+"/"+mGrabLimit);
+        id = topologyContext.getThisTaskId();
+        mLogger = new FileLogger("grab@"+id);
+        mLogger.log(TAG+"@"+id, "prepare, current process status:"+mCurrentGrab+"/"+mGrabLimit);
     }
 
     /**
@@ -92,23 +84,43 @@ public class GrabBolt extends BaseRichBolt {
         VideoInfo videoInfo = (VideoInfo) tuple.getValue(1);
         if(videoInfo == null)
             return;
+        count++;
         Process process = null;
-        Logger.log(TAG, "grab data: "+videoInfo.cmd+","+videoInfo.url+","+videoInfo.dir);
+        mLogger.log(TAG+"@"+id, "grab data: "+videoInfo.cmd+","+videoInfo.url+","+videoInfo.dir);
         //add
         if(videoInfo.cmd.equals(VideoInfo.ADD))
         {
             //if there too many running child processes, fail
             if (mCurrentGrab >= mGrabLimit)
             {
-                Logger.log(TAG, "child process num has been max value:"+mCurrentGrab+"/"+mGrabLimit);
+                mLogger.log(TAG+"@"+id, "child process num has been max value:"+mCurrentGrab+"/"+mGrabLimit);
                 mCollector.fail(tuple);
                 return;
             }
-            if(mProcessMap.get(videoInfo.url) != null)
+            process = mProcessMap.get(videoInfo.url);
+            if(process != null)
             {
-                mCollector.ack(tuple);
-                Logger.log(TAG, "the url:"+videoInfo.url+" is being grabbed!");
-                return;
+                try {
+                    boolean hasExit = process.waitFor(-1, TimeUnit.SECONDS);
+                    //the process is still alive, ignore the message
+                    if(!hasExit)
+                    {
+                        mLogger.log(TAG+"@"+id, "the url:"+videoInfo.url+" is being grabbed!");
+                        mCollector.ack(tuple);
+                        return;
+                    }
+                    //the process has exit, remove the process record
+                    else
+                    {
+                        mProcessMap.remove(videoInfo.url);
+                        mCurrentGrab--;
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace(mLogger.getPrintWriter());
+                    mLogger.getPrintWriter().flush();
+                    mCollector.ack(tuple);
+                    return;
+                }
             }
             //grab and send message to kafka
             process = mGrabber.grab(mRedisHost, mRedisPort, mRedisPassword,
@@ -118,7 +130,7 @@ public class GrabBolt extends BaseRichBolt {
             {
                 mProcessMap.put(videoInfo.url, process);
                 mCurrentGrab++;
-                Logger.log(TAG, "start process:"+process);
+                mLogger.log(TAG+"@"+id, "start process:"+process);
             }
         }
         //delete
@@ -131,7 +143,7 @@ public class GrabBolt extends BaseRichBolt {
                 process.destroy();
                 mProcessMap.remove(videoInfo.url);
                 mCurrentGrab--;
-                Logger.log(TAG, "destroy process:"+process);
+                mLogger.log(TAG+"@"+id, "destroy process:"+process);
             }
         }
         //pause
@@ -141,7 +153,7 @@ public class GrabBolt extends BaseRichBolt {
             if(process != null)
             {
                 ProcessHelper.sendMessage(process, VideoInfo.PAUSE);
-                Logger.log(TAG, "pause process:"+process);
+                mLogger.log(TAG+"@"+id, "pause process:"+process);
             }
         }
         //continue
@@ -151,14 +163,13 @@ public class GrabBolt extends BaseRichBolt {
             if(process != null)
             {
                 ProcessHelper.sendMessage(process, VideoInfo.CONTINUE);
-                Logger.log(TAG, "continue process:"+process);
+                mLogger.log(TAG+"@"+id, "continue process:"+process);
             }
         }
-        Logger.log(TAG, "child process num: "+mCurrentGrab+"/"+mGrabLimit);
+        mLogger.log(TAG, "child process num: "+mCurrentGrab+"/"+mGrabLimit+", msg total="+count);
         mCollector.ack(tuple);
     }
 
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-//        outputFieldsDeclarer.declare(new Fields("src", "process"));
     }
 }

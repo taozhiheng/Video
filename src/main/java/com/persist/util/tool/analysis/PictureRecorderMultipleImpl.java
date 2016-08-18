@@ -2,12 +2,11 @@ package com.persist.util.tool.analysis;
 
 import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.HBaseHelper;
-import com.persist.util.helper.Logger;
-
 import java.util.Calendar;
 
 /**
  * Created by tl on 16-7-28.
+ *
  */
 public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
@@ -48,6 +47,8 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
         try {
 
             mHelper.createTable(tableName, new String[]{columnFamily});
+            //把所有是黄图的记录添加到同一张表中
+            mHelper.createTable(yellowTableName, new String[]{columnFamily});
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -76,14 +77,11 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
                 //根据不同的视频id来创建不同的表
                 String urlTable = String.valueOf(Math.abs(result.description.video_id.hashCode()));
-                Logger.log(TAG, "mainTable:"+tableName+", urlTable:"+urlTable+", yellowTable:"+yellowTableName);
                 mHelper.createTable(urlTable, new String[]{columnFamily});
                 mHelper.addRow(urlTable, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,
                                 String.valueOf(result.ok), String.valueOf(result.percent)});
-
-                //把所有是黄图的记录添加到同一张表中
-                mHelper.createTable(yellowTableName, new String[]{columnFamily});
+                //record unhealthy images
                 if(!result.ok)
                 {
                     mHelper.addRow(yellowTableName, result.description.url, columnFamily,columns,
@@ -97,7 +95,7 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
                 calendar.setTimeInMillis(time);
 
                 int year = calendar.get(Calendar.YEAR);
-                int month = calendar.get(Calendar.MONTH);
+                int month = calendar.get(Calendar.MONTH)+1;
                 int date = calendar.get(Calendar.DATE);
                 int hour = calendar.get(Calendar.HOUR_OF_DAY);
                 String time_table_name = year+"-"+month+"-"+date+"-"+hour;
@@ -111,7 +109,6 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                Logger.log(TAG, "write Exception:"+e.getMessage());
             }
         }
         return ok;

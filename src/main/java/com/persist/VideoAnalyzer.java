@@ -8,6 +8,7 @@ import backtype.storm.topology.TopologyBuilder;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.AnalysisConfig;
+import com.persist.bolts.analysis.PictureCalculateBolt;
 import com.persist.bolts.analysis.PictureNotifierBolt;
 import com.persist.bolts.analysis.PictureRecorderBolt;
 import com.persist.bolts.analysis.PictureResultBolt;
@@ -22,6 +23,8 @@ import java.util.Arrays;
 /**
  * Created by zhiheng on 2016/7/5.
  *
+ * build and submit a topology to analysis pictures
+ *
  */
 public class VideoAnalyzer {
 
@@ -29,6 +32,7 @@ public class VideoAnalyzer {
 
     private final static String KEY_SPOUT = "key-spout";
     private final static String RESULT_BOLT = "result-bolt";
+    private final static String CALCULATE_BOLT = "calculate-bolt";
     private final static String NOTIFIER_BOLT = "notifier-bolt";
     private final static String RECORDER_BOLT = "recorder-bolt";
 
@@ -49,9 +53,9 @@ public class VideoAnalyzer {
 
         //load config from file "config.json" in current directory
         AnalysisConfig baseConfig = new AnalysisConfig();
+        Gson gson = new Gson();
         try
         {
-            Gson gson = new Gson();
             baseConfig = gson.fromJson(FileHelper.readString(configPath), AnalysisConfig.class);
         }
         catch (JsonSyntaxException e)
@@ -60,11 +64,9 @@ public class VideoAnalyzer {
         }
 
         Logger.log(TAG, "configPath:"+configPath);
+        Logger.log(TAG, gson.toJson(baseConfig));
 
-        //construct calculator and notifier to deal with msg
-//        IPictureCalculator calculator = new PictureCalculatorTestImpl(
-//                baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
-//        IPictureCalculator calculator = new CalculatorImpl(baseConfig.so, baseConfig.warnValue);
+
         IPictureNotifier notifier = new PictureNotifierImpl(
                 baseConfig.redisHost, baseConfig.redisPort,
                 baseConfig.redisPassword, baseConfig.redisChannels);
@@ -86,11 +88,14 @@ public class VideoAnalyzer {
         //construct topology builder
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout(KEY_SPOUT, new KafkaSpout(spoutConfig), baseConfig.keySpoutParallel);
-        builder.setBolt(RESULT_BOLT, new PictureResultBolt(baseConfig.so, baseConfig.warnValue),
+        builder.setBolt(RESULT_BOLT, new PictureResultBolt(baseConfig.width, baseConfig.height),
                 baseConfig.resultBoltParallel)
                 .shuffleGrouping(KEY_SPOUT);
-        builder.setBolt(NOTIFIER_BOLT, new PictureNotifierBolt(notifier), baseConfig.notifierBoltParallel)
+        builder.setBolt(CALCULATE_BOLT, new PictureCalculateBolt(baseConfig.so, baseConfig.warnValue,
+                baseConfig.bufferSize, baseConfig.duration), 1)
                 .shuffleGrouping(RESULT_BOLT);
+        builder.setBolt(NOTIFIER_BOLT, new PictureNotifierBolt(notifier), baseConfig.notifierBoltParallel)
+                .shuffleGrouping(CALCULATE_BOLT);
         builder.setBolt(RECORDER_BOLT, new PictureRecorderBolt(recorder), baseConfig.recorderBoltParallel)
                 .shuffleGrouping(NOTIFIER_BOLT);
 
@@ -100,12 +105,13 @@ public class VideoAnalyzer {
             conf.setNumWorkers(baseConfig.workerNum);
             conf.setDebug(false);
             StormSubmitter.submitTopology(args[1], conf, builder.createTopology());
+            Logger.log(TAG, "submit remote topology "+args[1]);
         } else {
             conf.setDebug(true);
             LocalCluster cluster = new LocalCluster();
-            cluster.submitTopology("videoAnalyzer", conf, builder.createTopology());
+            cluster.submitTopology("VideoAnalyzer", conf, builder.createTopology());
+            Logger.log(TAG, "submit local topology VideoAnalyzer");
         }
-
         Logger.close();
 
     }

@@ -1,1 +1,0 @@
-java -Djava.ext.dirs=$STORM_HOME/lib/ -cp $STORM_HOME/Video.jar com.persist.GrabThread  develop.finalshares.com 6379 redis.2016@develop.finalshares.com rtmp://live.hkstv.hk.lxdns.com/live/hks hdfs://hadoop01:9000/user/root/images/ topic-check-images-can-ignore zk01:9092,zk02:9092,zk03:9092 frame-%05d-%d.png

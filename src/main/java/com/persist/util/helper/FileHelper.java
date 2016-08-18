@@ -19,6 +19,9 @@ import java.net.URLConnection;
 public class FileHelper {
 
 
+    /**
+     * download image from url
+     * */
     public static boolean download(OutputStream os, String urlString)
     {
         if(urlString == null)
@@ -28,7 +31,7 @@ public class FileHelper {
             URLConnection conn = url.openConnection();
             InputStream is = conn.getInputStream();
             byte[] buf = new byte[1024];
-            int size = 0;
+            int size;
             while((size = is.read(buf))>-1)
             {//循环读取
                 os.write(buf, 0, size);
@@ -108,7 +111,7 @@ public class FileHelper {
             FileInputStream fis = new FileInputStream(file);
             BufferedReader reader = new BufferedReader(new InputStreamReader(fis));
             char[] buffer= new char[512];
-            int count = 0;
+            int count;
             StringBuilder builder = new StringBuilder();
             while((count = reader.read(buffer)) != -1)
             {
@@ -129,8 +132,8 @@ public class FileHelper {
     {
         if(src == null)
             return null;
-        byte[] data = null;
-            BASE64Decoder decoder = new BASE64Decoder();
+        byte[] data;
+        BASE64Decoder decoder = new BASE64Decoder();
         try {
             data = decoder.decodeBuffer(src);
             return data;

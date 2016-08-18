@@ -12,7 +12,9 @@ import java.lang.String;
 
 /**
  * Created by taozhiheng on 16-7-17.
+ *
  * simple operations on hdfs
+ *
  */
 public class HDFSHelper implements Serializable{
 
@@ -22,6 +24,7 @@ public class HDFSHelper implements Serializable{
     public HDFSHelper(String ip)
     {
         this.ip = ip;
+        open("hdfs://hadoop01:9000");
     }
 
     /**
@@ -94,7 +97,7 @@ public class HDFSHelper implements Serializable{
                 return false;
             OutputStream out = fs.create(new Path(dst), new Progressable() {
                 public void progress() {
-                    System.out.print(".");
+//                    System.out.print(".");
                 }
             });
             IOUtils.copyBytes(is, out, 4096, true);
@@ -162,17 +165,19 @@ public class HDFSHelper implements Serializable{
                 return false;
             Path path = new Path(dst);
             if(!fs.exists(path)) {
-                fs.close();
                 return false;
             }
             FSDataInputStream fsDataInputStream = fs.open(path);
-            byte[] ioBuffer = new byte[1024];
-            int readLen = fsDataInputStream.read(ioBuffer);
-            while (-1 != readLen) {
-                os.write(ioBuffer, 0, readLen);
-                readLen = fsDataInputStream.read(ioBuffer);
-            }
+            IOUtils.copyBytes(fsDataInputStream, os, 1024, false);
             fsDataInputStream.close();
+            fsDataInputStream = null;
+//            byte[] ioBuffer = new byte[1024];
+//            int readLen = fsDataInputStream.read(ioBuffer);
+//            while (-1 != readLen) {
+//                os.write(ioBuffer, 0, readLen);
+//                readLen = fsDataInputStream.read(ioBuffer);
+//            }
+//            fsDataInputStream.close();
             return true;
         }
         catch (IOException e)
@@ -201,7 +206,6 @@ public class HDFSHelper implements Serializable{
             if(fs == null)
                 return false;
             fs.deleteOnExit(new Path(dst));
-            fs.close();
             return true;
         } catch (IOException e) {
             e.printStackTrace();
@@ -212,7 +216,9 @@ public class HDFSHelper implements Serializable{
     private void open(String url)
     {
         try {
-            fs = FileSystem.get(URI.create(url), new Configuration());
+            Configuration conf = new Configuration();
+            conf.setBoolean("fs.hdfs.impl.disable.cache", true);
+            fs = FileSystem.get(URI.create(url), conf);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -223,6 +229,7 @@ public class HDFSHelper implements Serializable{
         if(fs != null) {
             try {
                 fs.close();
+                fs = null;
             } catch (IOException e) {
                 e.printStackTrace();
             }

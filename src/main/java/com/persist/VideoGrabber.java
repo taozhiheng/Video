@@ -23,6 +23,8 @@ import java.util.Arrays;
 /**
  * Created by taozhiheng on 16-7-15.
  *
+ * build and submit a topology to grab videos
+ *
  */
 public class VideoGrabber {
 
@@ -31,11 +33,10 @@ public class VideoGrabber {
     private final static String URL_SPOUT = "url-spout";
     private final static String RESOLVE_BOLT = "resolve-bolt";
     private final static String GRAB_BOLT = "grab-bolt";
-//    private final static String KILL_BOLT = "kill-bolt";
 
     public static void main(String[] args) throws Exception
     {
-
+        //reset log output stream to log file
         try {
             Logger.setOutput(new FileOutputStream(TAG, true));
         } catch (FileNotFoundException e) {
@@ -47,57 +48,54 @@ public class VideoGrabber {
         if(args.length > 0)
             configPath = args[0];
 
-        Logger.log(TAG, "configPath:"+configPath);
         //load config from file "config.json" in current directory
-        GrabConfig grabConfig = new GrabConfig();
+        GrabConfig baseConfig = new GrabConfig();
+        Gson gson = new Gson();
         try
         {
-            Gson gson = new Gson();
-            grabConfig = gson.fromJson(FileHelper.readString(configPath), GrabConfig.class);
+            baseConfig = gson.fromJson(FileHelper.readString(configPath), GrabConfig.class);
         }
         catch (JsonSyntaxException e)
         {
             e.printStackTrace();
         }
-        //reset log output stream to log file
+
+        Logger.log(TAG, "configPath:"+configPath);
+        Logger.log(TAG, gson.toJson(baseConfig));
 
 
         //construct kafka spout config
-        BrokerHosts brokerHosts = new ZkHosts(grabConfig.zks);
+        BrokerHosts brokerHosts = new ZkHosts(baseConfig.zks);
         SpoutConfig spoutConfig = new SpoutConfig(
-                brokerHosts, grabConfig.topic, grabConfig.zkRoot, grabConfig.id);
+                brokerHosts, baseConfig.topic, baseConfig.zkRoot, baseConfig.id);
         spoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
-        spoutConfig.zkServers = Arrays.asList(grabConfig.zkServers);
-        spoutConfig.zkPort = grabConfig.zkPort;
+        spoutConfig.zkServers = Arrays.asList(baseConfig.zkServers);
+        spoutConfig.zkPort = baseConfig.zkPort;
         spoutConfig.forceFromStart = false;
 
-        IGrabber grabber = new GrabberImpl(grabConfig.cmd, grabConfig.nameFormat);
+        IGrabber grabber = new GrabberImpl(baseConfig.cmd, baseConfig.nameFormat, baseConfig.frameRate);
 
         //construct topology builder
         TopologyBuilder builder = new TopologyBuilder();
-        builder.setSpout(URL_SPOUT, new KafkaSpout(spoutConfig), grabConfig.urlSpoutParallel);
-//        builder.setSpout(URL_SPOUT,
-//                new MyKafkaSpout(grabConfig.zks, grabConfig.topic, grabConfig.zkRoot, grabConfig.id), grabConfig.urlSpoutParallel);
-        Logger.log(TAG, URL_SPOUT);
-        Logger.log(TAG, "zks:"+grabConfig.zks+", topic:"+grabConfig.topic+", zkRoot:"+grabConfig.zkRoot+", id:"+grabConfig.id);
+        builder.setSpout(URL_SPOUT, new KafkaSpout(spoutConfig), baseConfig.urlSpoutParallel);
 
 
         builder.setBolt(RESOLVE_BOLT,
-                new ResolveBolt(), grabConfig.resolveBoltParallel)
+                new ResolveBolt(), baseConfig.resolveBoltParallel)
                 .shuffleGrouping(URL_SPOUT);
-        GrabBolt grabBolt = new GrabBolt(grabber, grabConfig.grabLimit/grabConfig.grabBoltParallel,
-                grabConfig.sendTopic, grabConfig.brokerList);
-        grabBolt.setRedis(grabConfig.redisHost, grabConfig.redisPort, grabConfig.redisPassword);
+        GrabBolt grabBolt = new GrabBolt(grabber, baseConfig.grabLimit/baseConfig.grabBoltParallel,
+                baseConfig.sendTopic, baseConfig.brokerList);
+        grabBolt.setRedis(baseConfig.redisHost, baseConfig.redisPort, baseConfig.redisPassword);
         builder.setBolt(GRAB_BOLT,
                 grabBolt,
-                grabConfig.grabBoltParallel)
+                baseConfig.grabBoltParallel)
                 .fieldsGrouping(RESOLVE_BOLT, new Fields("url"));
 
 
         //submit topology
         Config conf = new Config();
         if (args.length > 1) {
-            conf.setNumWorkers(grabConfig.workerNum);
+            conf.setNumWorkers(baseConfig.workerNum);
             conf.setDebug(false);
             StormSubmitter.submitTopology(args[1], conf, builder.createTopology());
         } else {
@@ -105,7 +103,6 @@ public class VideoGrabber {
             LocalCluster cluster = new LocalCluster();
             cluster.submitTopology("videoGrabber", conf, builder.createTopology());
         }
-
         Logger.close();
 
     }

@@ -1,7 +1,6 @@
 package com.persist.util.tool.analysis;
 
 import com.persist.bean.analysis.PictureResult;
-
 import java.io.Serializable;
 
 /**

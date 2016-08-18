@@ -8,18 +8,16 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import com.persist.bean.analysis.PictureResult;
-import com.persist.util.helper.Logger;
+import com.persist.util.helper.FileLogger;
 import com.persist.util.tool.analysis.IPictureNotifier;
-
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.util.Map;
 
 /**
  * Created by zhiheng on 2016/7/5.
- * callback the result from PictureResultBolt,
- * publish msg to redis,
- * and distribute them to PictureRecorderBolt,
+ *
+ * publish results to redis,
+ * and trigger PictureRecorderBolt to record
+ *
  */
 public class PictureNotifierBolt extends BaseRichBolt{
 
@@ -27,6 +25,10 @@ public class PictureNotifierBolt extends BaseRichBolt{
 
     private OutputCollector mCollector;
     private IPictureNotifier mNotifier;
+
+    private FileLogger mLogger;
+    private int id;
+    private long count = 0;
 
     public PictureNotifierBolt(IPictureNotifier notifier)
     {
@@ -39,21 +41,18 @@ public class PictureNotifierBolt extends BaseRichBolt{
      * and init notifier, actually init redis connection
      * */
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
-        Logger.log(TAG, "prepare PictureNotifierBolt");
         this.mCollector = outputCollector;
         mNotifier.prepare();
-        try {
-            Logger.setOutput(new FileOutputStream("VideoAnalyzer", true));
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            Logger.setDebug(false);
-        }
+        id = topologyContext.getThisTaskId();
+        mLogger = new FileLogger("picture-notify@"+id);
+        mLogger.log(TAG+"@"+id, "prepare");
     }
 
     @Override
     public void cleanup() {
         super.cleanup();
         mNotifier.stop();
+        mLogger.close();
     }
 
     /**
@@ -62,12 +61,21 @@ public class PictureNotifierBolt extends BaseRichBolt{
      * */
     public void execute(Tuple tuple) {
         PictureResult result = (PictureResult) tuple.getValue(0);
-        boolean status = mNotifier.notifyResult(result);
+        count++;
+        String tag = null;
         if(result.description != null)
-            Logger.log(TAG, "notify: "
-                    +result.description.url+","+result.description.video_id+","+result.percent
-                    +" status="+status);
+            tag = result.description.url;
+        mLogger.log(TAG+"@"+id, "prepare notify:"+tag+","
+                +(tag == null? null : result.description.video_id)+","
+                +result.percent
+                +", total="+count);
+        boolean status = mNotifier.notifyResult(result);
         mCollector.emit(new Values(result));
+
+        mLogger.log(TAG+"@"+id, "notify:"+tag+","
+                +(tag == null? null : result.description.video_id)+","
+                +result.percent
+                +" status="+status);
         mCollector.ack(tuple);
     }
 

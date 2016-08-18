@@ -2,7 +2,6 @@ package com.persist.util.tool.analysis;
 
 import com.persist.bean.analysis.PictureResult;
 import com.persist.util.helper.HBaseHelper;
-import com.persist.util.helper.Logger;
 
 /**
  * Created by taozhiheng on 16-7-13.
