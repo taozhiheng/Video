@@ -15,6 +15,14 @@ public class KafkaNewProducer {
 
 	private KafkaProducer<String, String> producer;
 
+	/**
+	 * Note:
+	 * set forceFlush=true may be dangerous.
+	 *
+	 * The problem may happen like:
+	 * org.apache.kafka.common.errors.InvalidTimestampException:
+	 * The timestamp of the message is out of acceptable range.
+	 * */
 	private boolean forceFlush;
 
 	public KafkaNewProducer(String brokerList) {
@@ -54,8 +62,17 @@ public class KafkaNewProducer {
 		if(producer == null)
 			return false;
 		producer.send(new ProducerRecord<String, String>(topic, message), callback);
+		//may be dangerous to force flushing
 		if(forceFlush)
 			producer.flush();
+		return true;
+	}
+
+	public boolean flush()
+	{
+		if(producer == null)
+			return false;
+		producer.flush();
 		return true;
 	}
 

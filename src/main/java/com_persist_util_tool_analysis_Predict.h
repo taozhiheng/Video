@@ -13,7 +13,7 @@ extern "C" {
  * Signature: (Ljava/util/List;)Ljava/util/HashMap;
  */
 JNIEXPORT jobject JNICALL Java_com_persist_util_tool_analysis_Predict_predict
-  (JNIEnv *, jobject, jobject);
+  (JNIEnv *, jclass, jobject);
 
 #ifdef __cplusplus
 }

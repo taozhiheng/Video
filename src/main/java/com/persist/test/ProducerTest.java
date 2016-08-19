@@ -12,11 +12,11 @@ import org.apache.kafka.clients.producer.RecordMetadata;
  */
 public class ProducerTest {
 
-    public static void main(String[] args)
+    public static void main(String[] args) throws Exception
     {
         KafkaNewProducer producer = new KafkaNewProducer("zk01:9092,zk02:9092,zk03:9092");
         int n = Integer.parseInt(args[1]);
-        String topic = "topic-check-images-can-ignore";
+        String topic = "test";
         PictureKey key = new PictureKey(args[0], null, null);
         Gson gson = new Gson();
         String msg;
@@ -39,6 +39,8 @@ public class ProducerTest {
                 e.printStackTrace();
             }
         }
+        System.out.println("Sleep for 3s for test");
+        Thread.sleep(3000);
         producer.close();
         System.out.println("send finish");
     }

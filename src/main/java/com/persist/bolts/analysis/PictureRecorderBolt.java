@@ -41,6 +41,7 @@ public class PictureRecorderBolt  extends BaseRichBolt {
         id = topologyContext.getThisTaskId();
         mLogger = new FileLogger("picture-record@"+id);
         mLogger.log(TAG+"@"+id, "prepare");
+        mRecorder.setLogger(mLogger);
     }
 
     @Override

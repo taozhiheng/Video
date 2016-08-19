@@ -1,6 +1,7 @@
 package com.persist.util.tool.analysis;
 
 import com.persist.bean.analysis.PictureResult;
+import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HBaseHelper;
 
 /**
@@ -54,6 +55,10 @@ public class PictureRecorderImpl implements IPictureRecorder {
 
     public void prepare() {
         initHBase();
+    }
+
+    public void setLogger(FileLogger logger) {
+
     }
 
     public boolean recordResult(PictureResult result) {

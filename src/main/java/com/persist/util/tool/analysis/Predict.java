@@ -123,6 +123,14 @@ public class Predict {
         return predict(images);
     }
 
+    /**
+     * real prediction algorithm which is implemented by cpp, and invoked by XXX.so in linux
+     *
+     * how to build XXX.so:
+     * No.1:    javah com.persist.util.tool.analysis.Predict
+     * No.2:    g++ -I$JAVA_HOME/include -I$JAVA_HOME/include/linux
+     *          -fPIC -shared com_persist_util_tool_analysis_Predict.cpp -o libcaffe.so
+     * */
     private static native HashMap<String, Float> predict(List<CalculateInfo> images);
 
 }

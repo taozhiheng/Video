@@ -11,6 +11,7 @@ import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.errors.InvalidTimestampException;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacv.*;
 import javax.imageio.ImageIO;
@@ -76,15 +77,19 @@ public class GrabThread extends Thread{
         mTopic = topic;
         //brokerList: ip:port,ip:port...
         if(brokerList != null && brokerList.length() > 2) {
-            mProducer = new KafkaNewProducer(brokerList, true);
+            mProducer = new KafkaNewProducer(brokerList, false);
             mCallback = new Callback() {
                 public void onCompletion(RecordMetadata recordMetadata, Exception e) {
                     if(e != null) {
                         mLogger.log(mUrl, "Kafka Exception:");
                         e.printStackTrace(mLogger.getPrintWriter());
                         mLogger.getPrintWriter().flush();
+                        mLogger.log(mUrl, "The offset of the record is: "+recordMetadata.offset());
                     }
-                    mLogger.log(mUrl, "The offset of the record is: "+recordMetadata.offset());
+                    else
+                    {
+                        mLogger.log(mUrl, "The offset of the record is: "+recordMetadata.offset());
+                    }
                 }
             };
         }
@@ -180,6 +185,7 @@ public class GrabThread extends Thread{
                         mGrabber.setFrameNumber(expectNumber);
                         setOK = true;
                         errorTimes = 0;
+                        mLogger.log(mUrl, "expectNumber="+expectNumber);
                     } catch (FrameGrabber.Exception e) {
                         e.printStackTrace(mLogger.getPrintWriter());
                         mLogger.getPrintWriter().flush();
@@ -193,6 +199,7 @@ public class GrabThread extends Thread{
                                 errorTimes = 0;
                                 isFirst = true;
                                 expectNumber = 0;
+                                mLogger.log(mUrl, "restart grab "+mUrl);
                             }
                         }
                         setOK = false;
@@ -269,8 +276,17 @@ public class GrabThread extends Thread{
                         //org.apache.kafka.common.errors.InvalidTimestampException:
                         //The timestamp of the message is out of acceptable range.
                         //(The Exception will be displayed in mCallback, I know neither the reason nor how to fix it!!!)
-                        mProducer.send(mTopic, msg, mCallback);
-                        mLogger.log(mTopic, "send kafka msg:"+msg);
+
+                        try {
+                            mProducer.send(mTopic, msg, mCallback);
+                            mLogger.log(mTopic, "send kafka msg:" + msg);
+                        }
+                        catch (InvalidTimestampException e)
+                        {
+                            mLogger.log(mUrl, "send kafka fail");
+                            e.printStackTrace(mLogger.getPrintWriter());
+                            mLogger.getPrintWriter().flush();
+                        }
                     }
                     mCount++;
                 }

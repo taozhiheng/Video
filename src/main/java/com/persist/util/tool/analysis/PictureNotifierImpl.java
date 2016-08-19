@@ -2,6 +2,7 @@ package com.persist.util.tool.analysis;
 
 import com.google.gson.Gson;
 import com.persist.bean.analysis.PictureResult;
+import com.persist.util.helper.FileLogger;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -27,6 +28,8 @@ public class PictureNotifierImpl implements IPictureNotifier {
     private String[] channels;
     private Gson mGson;
 
+    private FileLogger mLogger;
+
     public PictureNotifierImpl(String host, int port, String password, String[] channels)
     {
         if(host == null || password == null)
@@ -48,7 +51,11 @@ public class PictureNotifierImpl implements IPictureNotifier {
             pool = new JedisPool(config, host, port, 6000, password);
             mJedis = pool.getResource();
         } catch (Exception e) {
-            e.printStackTrace();
+            if(mLogger != null)
+            {
+                e.printStackTrace(mLogger.getPrintWriter());
+                mLogger.getPrintWriter().flush();
+            }
         }
     }
 
@@ -60,6 +67,10 @@ public class PictureNotifierImpl implements IPictureNotifier {
     public void prepare() {
         initJedis();
         initGson();
+    }
+
+    public void setLogger(FileLogger logger) {
+        this.mLogger = logger;
     }
 
     public boolean notifyResult(PictureResult result) {
@@ -76,9 +87,17 @@ public class PictureNotifierImpl implements IPictureNotifier {
             {
                 mJedis.publish(result.description.video_id, msg);
                 ok = true;
+                if(mLogger != null)
+                {
+                    mLogger.log(TAG, msg);
+                }
             }
             catch (JedisConnectionException e)
             {
+                if(mLogger != null) {
+                    e.printStackTrace(mLogger.getPrintWriter());
+                    mLogger.getPrintWriter().flush();
+                }
                 stop();
 //                initJedis();
             }

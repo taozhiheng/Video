@@ -1,6 +1,8 @@
 package com.persist.util.tool.analysis;
 
 import com.persist.bean.analysis.PictureResult;
+import com.persist.util.helper.FileLogger;
+
 import java.io.Serializable;
 
 /**
@@ -10,6 +12,8 @@ import java.io.Serializable;
 public interface IPictureNotifier extends Serializable{
 
     void prepare();
+
+    void setLogger(FileLogger logger);
 
     boolean notifyResult(PictureResult result);
 

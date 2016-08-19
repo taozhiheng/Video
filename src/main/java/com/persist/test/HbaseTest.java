@@ -17,8 +17,10 @@ public class HbaseTest {
         int port = Integer.parseInt(args[1]);
         HBaseHelper helper = new HBaseHelper(quorum, port);
         List<String> list = helper.getAllTables();
-        for(String s : list)
-            System.out.println(s);
+        if(list != null && list.size() > 0) {
+            for (String s : list)
+                System.out.println(s);
+        }
         try {
             helper.createTable("test", new String[]{"test-family"});
         } catch (Exception e) {
