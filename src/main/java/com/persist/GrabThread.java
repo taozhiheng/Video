@@ -139,6 +139,8 @@ public class GrabThread extends Thread{
         int errorTimes = 0;
         boolean isFirst = true;
 
+        int num = 0;
+
         PictureKey pictureKey = new PictureKey();
         try
         {
@@ -174,43 +176,50 @@ public class GrabThread extends Thread{
                 mLogger.log(mUrl, "prepare to grab frame " + mCount+"/"+mIndex);
                 //set frame number
                 //if set frame number ok last time, append grabStep, else append 1
-                if(grabStep > 1 && !isFirst)
-                {
-                    if(setOK)
-                        realStep = grabStep;
-                    else
-                        realStep = 1;
-                    expectNumber += realStep;
-                    try {
-                        mGrabber.setFrameNumber(expectNumber);
-                        setOK = true;
-                        errorTimes = 0;
-                        mLogger.log(mUrl, "expectNumber="+expectNumber);
-                    } catch (FrameGrabber.Exception e) {
-                        e.printStackTrace(mLogger.getPrintWriter());
-                        mLogger.getPrintWriter().flush();
-                        //reset expect number, and tag setOk=false
-                        expectNumber -= realStep;
-                        if(!setOK)
-                        {
-                            errorTimes++;
-                            //fail too many time, restart grab
-                            if(errorTimes >= FAIL_LIMIT && restartGrab()) {
-                                errorTimes = 0;
-                                isFirst = true;
-                                expectNumber = 0;
-                                mLogger.log(mUrl, "restart grab "+mUrl);
-                            }
-                        }
-                        setOK = false;
-                        continue;
-                    }
-                }
+//                if(grabStep > 1 && !isFirst)
+//                {
+//                    if(setOK)
+//                        realStep = grabStep;
+//                    else
+//                        realStep = 1;
+//                    expectNumber += realStep;
+//                    try {
+//                        mGrabber.setFrameNumber(expectNumber);
+//                        setOK = true;
+//                        errorTimes = 0;
+//                        mLogger.log(mUrl, "expectNumber="+expectNumber);
+//                    } catch (FrameGrabber.Exception e) {
+//                        e.printStackTrace(mLogger.getPrintWriter());
+//                        mLogger.getPrintWriter().flush();
+//                        //reset expect number, and tag setOk=false
+//                        expectNumber -= realStep;
+//                        if(!setOK)
+//                        {
+//                            errorTimes++;
+//                            //fail too many time, restart grab
+//                            if(errorTimes >= FAIL_LIMIT && restartGrab()) {
+//                                errorTimes = 0;
+//                                isFirst = true;
+//                                expectNumber = 0;
+//                                mLogger.log(mUrl, "restart grab "+mUrl);
+//                            }
+//                        }
+//                        setOK = false;
+//                        continue;
+//                    }
+//                }
                 //grab image
                 try {
                     frame = mGrabber.grabImage();
-                    if(frame != null && isFirst)
-                        isFirst = false;
+//                    if(frame != null && isFirst)
+//                        isFirst = false;
+                    if(frame != null)
+                        num++;
+                    //grab a frame each num frames
+                    if(num < grabStep)
+                        continue;
+                    else
+                        num = 0;
                     frameNumber = mGrabber.getFrameNumber();
                     mLogger.log(TAG, "frame number="+frameNumber);
                     //grab the same frame, continue
