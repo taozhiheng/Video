@@ -17,6 +17,8 @@ public class PictureKey implements Serializable{
     //the timestamp of the file specified by the url
     public String time_stamp;
 
+    public boolean special = false;
+
     public PictureKey()
     {
 
@@ -27,6 +29,7 @@ public class PictureKey implements Serializable{
         this.url = url;
         this.video_id = video_id;
         this.time_stamp = time_stamp;
+        this.special = false;
     }
 
     @Override

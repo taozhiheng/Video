@@ -76,8 +76,9 @@ public class PictureCalculateBolt extends BaseRichBolt {
     }
 
     public void execute(Tuple input) {
-        mLogger.log(TAG+"@"+id, "trigger triggerPredict");
-        List<PictureResult> list = Predict.triggerPredict();
+        boolean force = input.getBoolean(0);
+        mLogger.log(TAG+"@"+id, "trigger triggerPredict, force="+force);
+        List<PictureResult> list = Predict.triggerPredict(force);
         if (list != null && list.size() > 0)
         {
             for (PictureResult result : list)

@@ -49,6 +49,16 @@ public class GrabConfig {
 
     //the frame rate to grab
     public double frameRate = 1.0;
+    //max time of failing to grab invalid frames
+    public int failSeconds = 5;
+    //timeout of starting grabbing
+    public long startTimeout = 8000;
+    //timeout of grabbing frame
+    public long grabTimeout = 3000;
+    //timeout of restart grabbing
+    public long restartTimeout = 3000;
+    //retry times
+    public int retry = 3;
 
     //the num to workers
     public int workerNum = 3;

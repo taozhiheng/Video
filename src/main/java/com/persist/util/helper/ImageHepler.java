@@ -24,7 +24,13 @@ import com.sun.image.codec.jpeg.JPEGImageEncoder;
  * @author inc062977  
  *   
  */  
-public class ImageHepler {   
+public class ImageHepler {
+
+    static
+    {
+        System.setProperty("java.awt.headless", "true");
+    }
+
     /**  
      * 实现图像的等比缩放  
      * @param source  

@@ -86,6 +86,7 @@ public class PictureNotifierImpl implements IPictureNotifier {
             try
             {
                 mJedis.publish(result.description.video_id, msg);
+                mJedis.publish(result.description.video_id, "ok:"+result.ok+", percent:"+result.percent);
                 ok = true;
                 if(mLogger != null)
                 {

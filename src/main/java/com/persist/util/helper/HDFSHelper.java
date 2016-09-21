@@ -24,7 +24,7 @@ public class HDFSHelper implements Serializable{
     public HDFSHelper(String ip)
     {
         this.ip = ip;
-        open("hdfs://hadoop01:9000");
+        //open("hdfs://hadoop01:9000");
     }
 
     /**
@@ -127,7 +127,7 @@ public class HDFSHelper implements Serializable{
      * */
     public boolean download(File file, String remote)
     {
-        if(file.exists() && file.isFile()) {
+        if(!file.exists()|| file.isFile()) {
             try {
                 OutputStream os = new FileOutputStream(file);
                 boolean res =  download(os, remote);

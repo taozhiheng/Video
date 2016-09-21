@@ -107,7 +107,7 @@ public class PredictBolt extends BaseRichBolt{
         //trigger predict event
         mLogger.log(TAG+"@"+id, "trigger triggerPredict");
         long start = System.currentTimeMillis();
-        List<PictureResult> list = Predict.triggerPredict();
+        List<PictureResult> list = Predict.triggerPredict(false);
         long end = System.currentTimeMillis();
         //construct response messages to client
         if (list != null && list.size() > 0)

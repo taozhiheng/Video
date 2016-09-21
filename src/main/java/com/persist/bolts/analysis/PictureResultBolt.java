@@ -11,6 +11,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.CalculateInfo;
 import com.persist.bean.analysis.PictureKey;
+import com.persist.util.helper.FileHelper;
 import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HDFSHelper;
 import com.persist.util.helper.ImageHepler;
@@ -86,22 +87,36 @@ public class PictureResultBolt extends BaseRichBolt {
                 try {
                     ByteArrayOutputStream os = new ByteArrayOutputStream();
                     //download image
-                    if(pictureKey.url != null && mHelper.download(os, pictureKey.url))
+                    if(pictureKey.url != null)
                     {
-                        InputStream in = new ByteArrayInputStream(os.toByteArray());
-                        BufferedImage image = ImageIO.read(in);
-                        if (image.getWidth() != mWidth || image.getHeight() != mHeight)
-                            image = ImageHepler.resize(image, mWidth, mHeight);
-                        byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
-                                .getData();
-                        //put image to prediction buffer
-                        boolean ready = Predict.append(pictureKey, new CalculateInfo(pictureKey.url,pixels, mWidth, mHeight));
-                        count++;
-                        mLogger.log(TAG+"@"+id, "append "+pictureKey.url+" ok, ready="+ready+", total="+count);
-                        if(ready)
+                        boolean ok = false;
+                        if(pictureKey.special)
                         {
-                            //trigger prediction
-                            mCollector.emit(new Values(true));
+                            pictureKey.video_id = pictureKey.url;
+                            ok = FileHelper.download(os, pictureKey.url);
+                        }
+                        else
+                        {
+                            ok = mHelper.download(os, pictureKey.url);
+                        }
+                        mLogger.log(TAG+"@"+id, "download image from "+pictureKey.url+", status="+ok);
+                        if(ok)
+                        {
+                            InputStream in = new ByteArrayInputStream(os.toByteArray());
+                            BufferedImage image = ImageIO.read(in);
+                            if (image.getWidth() != mWidth || image.getHeight() != mHeight)
+                                image = ImageHepler.resize(image, mWidth, mHeight);
+                            byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
+                                    .getData();
+                            //put image to prediction buffer
+                            boolean ready = Predict.append(pictureKey, new CalculateInfo(pictureKey.url,pixels, mWidth, mHeight));
+                            count++;
+                            mLogger.log(TAG+"@"+id, "append "+pictureKey.url+" ok, ready="+ready+", total="+count);
+                            if(ready || pictureKey.special)
+                            {
+                                //trigger prediction
+                                mCollector.emit(new Values(pictureKey.special));
+                            }
                         }
                     }
                     os.close();

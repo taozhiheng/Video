@@ -73,7 +73,9 @@ public class VideoGrabber {
         spoutConfig.zkPort = baseConfig.zkPort;
         spoutConfig.forceFromStart = false;
 
-        IGrabber grabber = new GrabberImpl(baseConfig.cmd, baseConfig.nameFormat, baseConfig.frameRate);
+        IGrabber grabber = new GrabberImpl(baseConfig.cmd, baseConfig.nameFormat, baseConfig.frameRate,
+                baseConfig.failSeconds, baseConfig.startTimeout, baseConfig.grabTimeout,
+                baseConfig.restartTimeout, baseConfig.retry);
 
         //construct topology builder
         TopologyBuilder builder = new TopologyBuilder();

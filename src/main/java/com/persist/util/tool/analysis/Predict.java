@@ -67,14 +67,13 @@ public class Predict {
         return false;
     }
 
-    public synchronized static List<PictureResult> triggerPredict()
+    public synchronized static List<PictureResult> triggerPredict(boolean force)
     {
-
         long start, predictTime;
         start = System.currentTimeMillis();
         boolean sizeReady = buffer.size() >= bufferSize;
         boolean timeReady = (start-lastTime) >= duration;
-        if(!sizeReady && !timeReady)
+        if(!force && !sizeReady && !timeReady)
             return null;
         HashMap<String, Float> map = predictProxy(buffer);
         predictTime = System.currentTimeMillis()-start;

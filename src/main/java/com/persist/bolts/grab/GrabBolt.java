@@ -5,12 +5,14 @@ import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
 import backtype.storm.topology.base.BaseRichBolt;
 import backtype.storm.tuple.Tuple;
+import clojure.lang.MapEntry;
 import com.persist.bean.grab.VideoInfo;
 import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.ProcessHelper;
 import com.persist.util.tool.grab.IGrabber;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -63,6 +65,21 @@ public class GrabBolt extends BaseRichBolt {
     @Override
     public void cleanup() {
         super.cleanup();
+        //destroy all children processes
+        Process process;
+        for(Map.Entry<String, Process> item : mProcessMap.entrySet())
+        {
+            process = item.getValue();
+            if (process != null)
+            {
+                ProcessHelper.sendMessage(process, VideoInfo.DEL);
+                ProcessHelper.finishMessage(process);
+                process.destroy();
+                mCurrentGrab--;
+                mLogger.log(TAG + "@" + id, "*cleanup*, destroy process:" + process);
+            }
+        }
+        mProcessMap.clear();
         mLogger.close();
     }
 
