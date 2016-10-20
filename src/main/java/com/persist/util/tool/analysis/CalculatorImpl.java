@@ -3,9 +3,10 @@ package com.persist.util.tool.analysis;
 import com.persist.bean.analysis.CalculateInfo;
 import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.analysis.PictureResult;
+import com.persist.util.helper.BufferedImageHelper;
 import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HDFSHelper;
-import com.persist.util.helper.ImageHepler;
+import com.persist.util.helper.ImageHelper;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -112,8 +113,10 @@ public class CalculatorImpl implements IPictureCalculator {
             {
                 InputStream in = new ByteArrayInputStream(os.toByteArray());
                 BufferedImage image = ImageIO.read(in);
-                if (image.getWidth() != mWidth || image.getHeight() != mHeight)
-                    image = ImageHepler.resize(image, mWidth, mHeight);
+                if (image.getWidth() != mWidth || image.getHeight() != mHeight) {
+//                    image = ImageHelper.resize(image, mWidth, mHeight);
+                    image = BufferedImageHelper.resize(image, mWidth, mHeight);
+                }
                 byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
                         .getData();
                 mInfoBuffer.put(key.url, key);

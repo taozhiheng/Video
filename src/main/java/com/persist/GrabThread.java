@@ -4,10 +4,10 @@ import com.google.gson.Gson;
 import com.persist.bean.analysis.PictureKey;
 import com.persist.bean.grab.VideoInfo;
 import com.persist.kafka.KafkaNewProducer;
+import com.persist.util.helper.BufferedImageHelper;
 import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HDFSHelper;
-import com.persist.util.helper.ImageHepler;
-import com.persist.util.tool.grab.GrabberImpl;
+import com.persist.util.helper.ImageHelper;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
 import org.apache.kafka.clients.producer.Callback;
@@ -325,7 +325,9 @@ public class GrabThread extends Thread{
                     oldH = image.height();
                     bi = new BufferedImage(oldW, oldH, BufferedImage.TYPE_3BYTE_BGR);
                     bi.getGraphics().drawImage(mImageConverter.getBufferedImage(frame), 0, 0, oldW, oldH, null);
-                    bi = ImageHepler.resize(bi, mWidth, mHeight);
+//                    bi = ImageHelper.resize(bi, mWidth, mHeight);
+                    bi = BufferedImageHelper.resize(bi, mWidth, mHeight);
+
                     mLogger.log(mUrl, "size: "+bi.getWidth()+"*"+bi.getHeight());
                     //write image to byte array output stream
                     baos = new ByteArrayOutputStream();

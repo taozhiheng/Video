@@ -79,6 +79,10 @@ public class PictureRecorderImpl implements IPictureRecorder {
     }
 
     public void stop() {
-        mHelper.close();
+        if(mHelper != null)
+        {
+            mHelper.close();
+            mHelper = null;
+        }
     }
 }

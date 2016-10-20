@@ -117,20 +117,22 @@ public class HBaseHelper {
     }
 
     // get row
-    public void getRow(String tableName, String row) throws Exception {
+    public Result getRow(String tableName, String row) throws Exception {
         Table table = mConnection.getTable(TableName.valueOf(tableName));
         Get get = new Get(Bytes.toBytes(row));
-        Result result = table.get(get);
+        return table.get(get);
+//        Result result = table.get(get);
 //        System.out.println(Bytes.toString(result.getRow()));
     }
 
     // get all records
-    public void getAllRows(String tableName) throws Exception {
+    public ResultScanner getAllRows(String tableName) throws Exception {
         Table table = mConnection.getTable(TableName.valueOf(tableName));
         Scan scan = new Scan();
-        ResultScanner results = table.getScanner(scan);
+        return table.getScanner(scan);
+//        ResultScanner results = table.getScanner(scan);
         // 输出结果
-        for (Result result : results) {
+//        for (Result result : results) {
 //            System.out.println(Bytes.toString(result.getRow()));
 
 //            for (KeyValue rowKV : result.raw()) {
@@ -141,7 +143,7 @@ public class HBaseHelper {
 //                        .print("Row Name:  " + new String(rowKV.getQualifier()) + " ");
 //                System.out.println("Value: " + new String(rowKV.getValue()) + " ");
 //            }
-        }
+//        }
     }
 
     public List getAllTables() {

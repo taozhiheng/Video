@@ -11,6 +11,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.image.ImageInfo;
 import com.persist.util.helper.FileLogger;
+import com.persist.util.tool.image.IAuth;
+
 import java.util.Map;
 
 /**
@@ -33,18 +35,38 @@ public class UrlBolt extends BaseRichBolt {
     private int id;
     private long count = 0;
 
+    //the tool for authentication.If it is null, the bolt will not check authentication.
+    private IAuth mAuth;
+
     public UrlBolt()
     {
     }
 
+    public UrlBolt(IAuth auth)
+    {
+        this.mAuth = auth;
+    }
+
+    @Override
+    public void cleanup() {
+        super.cleanup();
+        mLogger.close();
+        if(mAuth != null)
+        {
+            mAuth.stop();
+        }
+    }
 
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector outputCollector) {
         this.mCollector = outputCollector;
         mGson = new Gson();
         id = topologyContext.getThisTaskId();
         mLogger = new FileLogger("url@"+id);
-        mLogger.log(TAG+"@"+id, "prepare");
-
+        mLogger.log(TAG+"@"+id, "prepare, the IAuth instance is: "+mAuth);
+        if(mAuth != null)
+        {
+            mAuth.prepare();
+        }
     }
 
     public void execute(Tuple tuple) {
@@ -56,13 +78,29 @@ public class UrlBolt extends BaseRichBolt {
         {
             //resolve json string
             ImageInfo info = mGson.fromJson(data, ImageInfo.class);
+
+            //authentication
+            if(mAuth != null)
+            {
+                if(!mAuth.auth(info.username, info.password))
+                {
+                    mLogger.log(TAG+"@"+id, "invalid authentication: username="+info.username+", password="+info.password);
+                    mCollector.ack(tuple);
+                    return;
+                }
+                else
+                {
+                    mLogger.log(TAG+"@"+id, "valid authentication: username="+info.username);
+                }
+            }
+
             if(info.urls != null && info.urls.length > 0)
             {
                 String key = System.currentTimeMillis()+"@"+id;
                 //emit each url so that the download tasks can be executed in multi threads
                 for(String url : info.urls)
                 {
-                    mCollector.emit(new Values(url, key, info.urls.length, returnInfo));
+                    mCollector.emit(new Values(url, key, info.urls.length, returnInfo, info.user));
                 }
                 mLogger.log(TAG+"@"+id, "url size="+info.urls.length+", message total="+count);
             }
@@ -79,6 +117,6 @@ public class UrlBolt extends BaseRichBolt {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {
-        outputFieldsDeclarer.declare(new Fields("url", "key", "size", "result-info"));
+        outputFieldsDeclarer.declare(new Fields("url", "key", "size", "result-info", "user"));
     }
 }

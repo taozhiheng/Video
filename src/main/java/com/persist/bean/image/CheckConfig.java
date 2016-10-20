@@ -25,6 +25,32 @@ public class CheckConfig {
     public int downloadBoltParallel = 5;
     //the ReturnBolt parallelism
     public int returnBoltParallel = 3;
+
+    //the authentication cache size
+    public int authCacheSize = 100;
+
+    //the hbase server hostname or ip
+    public String hbaseQuorum = "192.168.0.189";
+    //the client port of the zk in hbase server
+    public int hbasePort = 2181;
+    //the hbase master name, useless
+    public String hbaseMater = "tl-P45VJ:60000";
+    //the hbase authentication, useless
+    public String hbaseAuth = "root";
+    //the auth table
+    public String hbaseAuthTable = "auth";
+    public String hbaseAuthFamily = "info";
+    public String hbaseAuthColumn = "password";
+    //the usage table
+    public String hbaseUsageTable = "usage";
+    public String hbaseUsageFamily = "info";
+    public String[] hbaseUsageColumns = {"user", "size"};
+    //the recent table
+    public String hbaseRecentTable = "recent";
+    public String hbaseRecentFamily = "info";
+    public String[] hbaseRecentColumns = {"urls", "values"};
+    public int hbaseRecentCount = 100;
+
     //the worker number (process number), suggest to set 1,
     //otherwise the gpu resources may be not enough, because each process uses dependent gpu resources
     public int workerNum= 1;

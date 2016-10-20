@@ -11,10 +11,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.persist.bean.analysis.CalculateInfo;
 import com.persist.bean.analysis.PictureKey;
-import com.persist.util.helper.FileHelper;
-import com.persist.util.helper.FileLogger;
-import com.persist.util.helper.HDFSHelper;
-import com.persist.util.helper.ImageHepler;
+import com.persist.util.helper.*;
 import com.persist.util.tool.analysis.Predict;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -68,6 +65,7 @@ public class PictureResultBolt extends BaseRichBolt {
         mHelper = new HDFSHelper(null);
         id = topologyContext.getThisTaskId();
         mLogger = new FileLogger("picture-result@"+id);
+        System.setProperty("java.awt.headless", "true");
         mLogger.log(TAG+"@"+id, "prepare");
     }
 
@@ -104,8 +102,18 @@ public class PictureResultBolt extends BaseRichBolt {
                         {
                             InputStream in = new ByteArrayInputStream(os.toByteArray());
                             BufferedImage image = ImageIO.read(in);
-                            if (image.getWidth() != mWidth || image.getHeight() != mHeight)
-                                image = ImageHepler.resize(image, mWidth, mHeight);
+                            if(image == null)
+                            {
+                                mLogger.log(TAG+"@"+id, "the image who urls is"+pictureKey.url +" is null!");
+                                os.close();
+                                mCollector.ack(tuple);
+                                return;
+                            }
+                            if (image.getWidth() != mWidth || image.getHeight() != mHeight) {
+//                                image = ImageHelper.resize(image, mWidth, mHeight);
+                                image = BufferedImageHelper.resize(image, mWidth, mHeight);
+
+                            }
                             byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
                                     .getData();
                             //put image to prediction buffer

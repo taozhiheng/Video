@@ -24,7 +24,7 @@ import com.sun.image.codec.jpeg.JPEGImageEncoder;
  * @author inc062977  
  *   
  */  
-public class ImageHepler {
+public class ImageHelper {
 
     static
     {

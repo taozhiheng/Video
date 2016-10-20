@@ -14,6 +14,11 @@ import com.persist.bolts.image.PredictBolt;
 import com.persist.bolts.image.ReturnBolt;
 import com.persist.util.helper.FileHelper;
 import com.persist.util.helper.Logger;
+import com.persist.util.tool.image.AuthImpl;
+import com.persist.util.tool.image.IAuth;
+import com.persist.util.tool.image.IRecorder;
+import com.persist.util.tool.image.RecorderImpl;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 
@@ -66,6 +71,20 @@ public class ImageCheck {
 
         Logger.log(TAG, "configPath:"+configPath);
         Logger.log(TAG, gson.toJson(baseConfig));
+        //create auth tool
+        IAuth auth = new AuthImpl(
+                baseConfig.hbaseQuorum, baseConfig.hbasePort,
+                baseConfig.hbaseMater, baseConfig.hbaseAuth,
+                baseConfig.hbaseAuthTable, baseConfig.hbaseAuthFamily,
+                baseConfig.hbaseAuthColumn, baseConfig.authCacheSize);
+        //create record tool
+        IRecorder recorder = new RecorderImpl(
+                baseConfig.hbaseQuorum, baseConfig.hbasePort,
+                baseConfig.hbaseMater, baseConfig.hbaseAuth,
+                baseConfig.hbaseUsageTable, baseConfig.hbaseUsageFamily,
+                baseConfig.hbaseUsageColumns,
+                baseConfig.hbaseRecentTable, baseConfig.hbaseRecentFamily,
+                baseConfig.hbaseRecentColumns);
 
         TopologyBuilder builder = new TopologyBuilder();
         DRPCSpout drpcSpout = new DRPCSpout(baseConfig.function);
@@ -77,7 +96,7 @@ public class ImageCheck {
                 .shuffleGrouping(URL_BOLT);
         builder.setBolt(PREDICT_BOLT, new PredictBolt(baseConfig.so, baseConfig.warnValue), 1)
                 .shuffleGrouping(DOWNLOAD_BOLT);
-        builder.setBolt(RETURN_BOLT, new ReturnBolt(), baseConfig.returnBoltParallel)
+        builder.setBolt(RETURN_BOLT, new ReturnBolt(recorder, baseConfig.hbaseRecentCount), baseConfig.returnBoltParallel)
                 .shuffleGrouping(PREDICT_BOLT);
 //        builder.setBolt(RETURN_BOLT, new ReturnResults(), 3)
 //                .shuffleGrouping(IMAGE_BOLT);

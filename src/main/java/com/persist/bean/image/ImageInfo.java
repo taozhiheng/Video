@@ -14,6 +14,13 @@ public class ImageInfo implements Serializable{
     public float[] values;
     public boolean[] oks;
 
+    //just for identification
+    public String user;
+
+    //just for authentication
+    public String username;
+    public String password;
+
     public ImageInfo()
     {
 

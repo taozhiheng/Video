@@ -40,7 +40,7 @@ public class PredictBolt extends BaseRichBolt{
     private FileLogger mLogger;
     private int id;
     private long count = 0;
-    private Gson mGson;
+//    private Gson mGson;
 
     private String so;
     private float warnValue;
@@ -77,7 +77,7 @@ public class PredictBolt extends BaseRichBolt{
         Predict.setWarnValue(warnValue);
         Predict.setBufferSize(bufferSize);
         Predict.setDuration(duration);
-        mGson = new Gson();
+//        mGson = new Gson();
         mUrlMap = new HashMap<String, UrlInfo>();
         id = context.getThisTaskId();
         mLogger = new FileLogger("triggerPredict@"+id);
@@ -88,6 +88,7 @@ public class PredictBolt extends BaseRichBolt{
         String key = input.getString(0);
         int size = input.getInteger(1);
         String returnInfo = input.getString(2);
+        String user = input.getString(3);
 
         UrlInfo urlInfo = mUrlMap.get(key);
         //if the urlInfo don't exist, put it to mUrlMap
@@ -105,11 +106,12 @@ public class PredictBolt extends BaseRichBolt{
         }
 
         //trigger predict event
-        mLogger.log(TAG+"@"+id, "trigger triggerPredict");
+        mLogger.log(TAG+"@"+id, "trigger triggerPredict, size="+size);
         long start = System.currentTimeMillis();
-        List<PictureResult> list = Predict.triggerPredict(false);
+        List<PictureResult> list = Predict.triggerPredict(true);
         long end = System.currentTimeMillis();
         //construct response messages to client
+        ImageInfo info = null;
         if (list != null && list.size() > 0)
         {
             String[] urls = new String[list.size()];
@@ -125,16 +127,16 @@ public class PredictBolt extends BaseRichBolt{
             }
             count += list.size();
             mLogger.log(TAG+"@"+id, "size="+list.size()+", time="+(end-start)+", total="+count);
-            ImageInfo info = new ImageInfo(urls, values, oks);
-            String result = mGson.toJson(info);
-            mCollector.emit(new Values(result, returnInfo));
+            info = new ImageInfo(urls, values, oks);
+//            String result = mGson.toJson(info);
         }
+        mCollector.emit(new Values(info, returnInfo, user));
         //remove urlInfo from mUrlMap
         mUrlMap.remove(key);
         mCollector.ack(input);
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("result", "result-info"));
+        declarer.declare(new Fields("result", "result-info", "user"));
     }
 }

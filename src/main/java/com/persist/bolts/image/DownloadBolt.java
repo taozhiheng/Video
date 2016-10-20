@@ -9,9 +9,10 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 import com.persist.bean.analysis.CalculateInfo;
 import com.persist.bean.analysis.PictureKey;
+import com.persist.util.helper.BufferedImageHelper;
 import com.persist.util.helper.FileHelper;
 import com.persist.util.helper.FileLogger;
-import com.persist.util.helper.ImageHepler;
+import com.persist.util.helper.ImageHelper;
 import com.persist.util.tool.analysis.Predict;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -45,10 +46,17 @@ public class DownloadBolt extends BaseRichBolt {
         this.mHeight = height;
     }
 
+    @Override
+    public void cleanup() {
+        super.cleanup();
+        mLogger.close();
+    }
+
     public void prepare(Map stormConf, TopologyContext context, OutputCollector collector) {
         mCollector = collector;
         id = context.getThisTaskId();
         mLogger = new FileLogger("download@"+id);
+//        System.setProperty("java.awt.headless", "true");
         mLogger.log(TAG+"@"+id, "prepare");
     }
 
@@ -57,6 +65,7 @@ public class DownloadBolt extends BaseRichBolt {
         String key = input.getString(1);
         int size = input.getInteger(2);
         String returnInfo = input.getString(3);
+        String user = input.getString(4);
 
         if(url != null)
         {
@@ -69,8 +78,19 @@ public class DownloadBolt extends BaseRichBolt {
                     mLogger.log(TAG + "@" + id, "succeed downloading image from " + url);
                     InputStream in = new ByteArrayInputStream(os.toByteArray());
                     BufferedImage image = ImageIO.read(in);
-                    if (image.getWidth() != mWidth || image.getHeight() != mHeight)
-                        image = ImageHepler.resize(image, mWidth, mHeight);
+                    if(image == null)
+                    {
+                        mLogger.log(TAG+"@"+id, "the image who urls is"+url +" is null!");
+                        os.close();
+                        mCollector.emit(new Values(key, size, returnInfo, user));
+                        mCollector.ack(input);
+                        return;
+                    }
+                    if (image.getWidth() != mWidth || image.getHeight() != mHeight) {
+//                        image = ImageHelper.resize(image, mWidth, mHeight);
+                        image = BufferedImageHelper.resize(image, mWidth, mHeight);
+
+                    }
                     byte[] pixels = ((DataBufferByte) image.getRaster().getDataBuffer())
                             .getData();
                     PictureKey pictureKey = new PictureKey(url, url, String.valueOf(System.currentTimeMillis()));
@@ -79,6 +99,11 @@ public class DownloadBolt extends BaseRichBolt {
                     in.close();
                     count++;
                     mLogger.log(TAG + "@" + id, "append " + url + " ok, total=" + count);
+
+                }
+                else
+                {
+                    mLogger.log(TAG + "@" + id, "fail downloading image from " + url);
                 }
                 os.close();
             } catch (IOException e)
@@ -86,18 +111,18 @@ public class DownloadBolt extends BaseRichBolt {
                 e.printStackTrace(mLogger.getPrintWriter());
                 mLogger.getPrintWriter().flush();
                 //trigger prediction
-                mCollector.emit(new Values(key, size, returnInfo));
+                mCollector.emit(new Values(key, size, returnInfo, user));
                 mCollector.ack(input);
                 return;
             }
         }
         //trigger prediction
-        mCollector.emit(new Values(key, size, returnInfo));
+        mCollector.emit(new Values(key, size, returnInfo, user));
         mCollector.ack(input);
     }
 
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("key", "size", "result-info"));
+        declarer.declare(new Fields("key", "size", "result-info", "user"));
     }
 }
