@@ -20,6 +20,8 @@ public class AnalysisConfig {
     //the prediction will be triggered
     public int bufferSize = 1000;
     public long duration = 3000;
+    //the tick time to check and flush buffer (time: tick seconds)
+    public int tick = 10;
 
     //the KafkaSpout parallelism which will determine the process num
     public int keySpoutParallel = 1;

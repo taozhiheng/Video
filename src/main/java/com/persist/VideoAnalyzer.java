@@ -92,7 +92,7 @@ public class VideoAnalyzer {
                 baseConfig.resultBoltParallel)
                 .shuffleGrouping(KEY_SPOUT);
         builder.setBolt(CALCULATE_BOLT, new PictureCalculateBolt(baseConfig.so, baseConfig.warnValue,
-                baseConfig.bufferSize, baseConfig.duration), 1)
+                baseConfig.bufferSize, baseConfig.duration, baseConfig.tick), 1)
                 .shuffleGrouping(RESULT_BOLT);
         builder.setBolt(NOTIFIER_BOLT, new PictureNotifierBolt(notifier), baseConfig.notifierBoltParallel)
                 .shuffleGrouping(CALCULATE_BOLT);

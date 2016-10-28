@@ -53,7 +53,12 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
             //把所有是黄图的记录添加到同一张表中
             mHelper.createTable(yellowTableName, new String[]{columnFamily});
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
+            if(mLogger != null)
+            {
+                e.printStackTrace(mLogger.getPrintWriter());
+                mLogger.getPrintWriter().flush();
+            }
         }
     }
 
@@ -79,6 +84,8 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
         if(mHelper != null )
         {
             try {
+                if(mLogger != null)
+                    mLogger.log(TAG, "write table "+tableName);
                 mHelper.addRow(tableName, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,
                                 String.valueOf(result.ok), String.valueOf(result.percent)});
@@ -86,6 +93,8 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
                 //根据不同的视频id来创建不同的表
                 String urlTable = String.valueOf(Math.abs(result.description.video_id.hashCode()));
                 mHelper.createTable(urlTable, new String[]{columnFamily});
+                if(mLogger != null)
+                    mLogger.log(TAG, "write table "+urlTable);
                 mHelper.addRow(urlTable, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,
                                 String.valueOf(result.ok), String.valueOf(result.percent)});
@@ -114,6 +123,8 @@ public class PictureRecorderMultipleImpl implements IPictureRecorder {
 
                 mHelper.createTable(time_table_name, new String[]{columnFamily});
 
+                if(mLogger != null)
+                    mLogger.log(TAG, "write table "+time_table_name);
                 mHelper.addRow(time_table_name, result.description.url, columnFamily,columns,
                         new String[]{result.description.video_id, result.description.time_stamp,
                                 String.valueOf(result.ok), String.valueOf(result.percent)});

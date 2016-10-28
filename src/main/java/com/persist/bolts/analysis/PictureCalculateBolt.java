@@ -1,5 +1,7 @@
 package com.persist.bolts.analysis;
 
+import backtype.storm.Config;
+import backtype.storm.Constants;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.topology.OutputFieldsDeclarer;
@@ -28,8 +30,10 @@ public class PictureCalculateBolt extends BaseRichBolt {
     private final static float DEFAULT_WARN_VALUE = 0.75f;
     private final static int DEFAULT_BUFFER_SIZE = 1000;
     private final static int DEFAULT_DURATION = 3000;
+    private final static int DEFAULT_TICK = 10;
 
     private OutputCollector mCollector;
+    private int mTick;
 
     private FileLogger mLogger;
     private int id;
@@ -47,15 +51,16 @@ public class PictureCalculateBolt extends BaseRichBolt {
 
     public PictureCalculateBolt(String so, float warnValue)
     {
-        this(so, warnValue, DEFAULT_BUFFER_SIZE, DEFAULT_DURATION);
+        this(so, warnValue, DEFAULT_BUFFER_SIZE, DEFAULT_DURATION, DEFAULT_TICK);
     }
 
-    public PictureCalculateBolt(String so, float warnValue, int bufferSize, long duration)
+    public PictureCalculateBolt(String so, float warnValue, int bufferSize, long duration, int tick)
     {
         this.so = so;
         this.warnValue = warnValue;
         this.bufferSize = bufferSize;
         this.duration = duration;
+        this.mTick = tick;
     }
 
     @Override
@@ -75,8 +80,28 @@ public class PictureCalculateBolt extends BaseRichBolt {
         mLogger.log(TAG+"@"+id, "prepare");
     }
 
+    @Override
+    public Map<String, Object> getComponentConfiguration() {
+        //set a tick tuple sender to flush compute buffer
+        Config config = new Config();
+        config.put(Config.TOPOLOGY_TICK_TUPLE_FREQ_SECS, mTick);
+        return config;
+    }
+
     public void execute(Tuple input) {
-        boolean force = input.getBoolean(0);
+        boolean force = false;
+        //receive tick tuple, flush compute buffer
+        if(input.getSourceComponent().equals(Constants.SYSTEM_COMPONENT_ID)
+                && input.getSourceStreamId().equals(Constants.SYSTEM_TICK_STREAM_ID))
+        {
+            force = true;
+            mLogger.log(TAG, "receive tick tuple, force to trigger predict");
+        }
+        //receive standard tuple
+        else
+        {
+            force = input.getBoolean(0);
+        }
         mLogger.log(TAG+"@"+id, "trigger triggerPredict, force="+force);
         List<PictureResult> list = Predict.triggerPredict(force);
         if (list != null && list.size() > 0)
