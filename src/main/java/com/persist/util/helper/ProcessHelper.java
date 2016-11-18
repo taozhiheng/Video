@@ -28,8 +28,12 @@ public class ProcessHelper {
     public static void finishMessage(Process process)
     {
         OutputStream os = process.getOutputStream();
+        InputStream out = process.getInputStream();
+        InputStream err = process.getErrorStream();
         try {
             os.close();
+            out.close();
+            err.close();
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -1,6 +1,11 @@
 package com.persist.util.tool.grab;
 
+import com.persist.util.helper.FileLogger;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Map;
 
 /**
@@ -114,10 +119,48 @@ public class GrabberImpl implements IGrabber {
                 builder.append(' ').append(nameFormat);
             String cmd = builder.toString().replace("$"+STORM_HOME, value);
 
-            return Runtime.getRuntime().exec(cmd, new String[]{STORM_HOME+"="+value});
+            Process process = Runtime.getRuntime().exec(cmd, new String[]{STORM_HOME+"="+value});
+            String id = String.valueOf(Math.abs(url.hashCode()));
+            new StreamThread(process.getInputStream(), id+".out", "OUT").start();
+            new StreamThread(process.getErrorStream(), id+".err", "ERR").start();
+            return process;
         } catch (IOException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    //just for test
+    static class StreamThread extends Thread
+    {
+        private InputStream is;
+        private String filename;
+//        private FileLogger fileLogger;
+        private String type;
+
+        public StreamThread(InputStream is, String filename, String type)
+        {
+            this.is = is;
+            this.filename = filename;
+            this.type = type;
+//            this.fileLogger = new FileLogger(filename);
+        }
+
+        @Override
+        public void run() {
+            try {
+                InputStreamReader isr = new InputStreamReader(is);
+                BufferedReader br = new BufferedReader(isr);
+                String line = null;
+                while ((line = br.readLine()) != null) {
+//                    fileLogger.log(type, line);
+                    System.out.println(type+" > "+line);
+                }
+//                fileLogger.log(type, "process exits?);
+                System.out.println(type+" > "+" process exits?");
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
         }
     }
 }

@@ -74,6 +74,14 @@ public class HDFSHelper implements Serializable{
         }
     }
 
+    //just for test
+    private FileLogger mLogger;
+    public void setLogger(FileLogger logger)
+    {
+        this.mLogger = logger;
+    }
+
+
     /**
      * upload local file or directory to remote hdfs system
      * @param is the input stream of local file
@@ -106,6 +114,10 @@ public class HDFSHelper implements Serializable{
         catch (IOException e)
         {
             e.printStackTrace();
+            if(mLogger != null) {
+                e.printStackTrace(mLogger.getPrintWriter());
+                mLogger.getPrintWriter().flush();
+            }
             return false;
         }
     }

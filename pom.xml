@@ -96,11 +96,10 @@
             <version>2.7</version>
         </dependency>
 
-        <!--&lt;!&ndash; https://mvnrepository.com/artifact/nu.pattern/opencv &ndash;&gt;-->
         <!--<dependency>-->
-            <!--<groupId>nu.pattern</groupId>-->
-            <!--<artifactId>opencv</artifactId>-->
-            <!--<version>2.4.9-4</version>-->
+            <!--<groupId>org.jpy</groupId>-->
+            <!--<artifactId>jpy</artifactId>-->
+            <!--<version>0.9-SNAPSHOT</version>-->
         <!--</dependency>-->
 
     </dependencies>

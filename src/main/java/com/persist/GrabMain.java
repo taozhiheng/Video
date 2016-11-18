@@ -7,49 +7,32 @@ import com.persist.kafka.KafkaNewProducer;
 import com.persist.util.helper.BufferedImageHelper;
 import com.persist.util.helper.FileLogger;
 import com.persist.util.helper.HDFSHelper;
-import com.persist.util.helper.ImageHelper;
 import com.persist.util.tool.grab.IVideoNotifier;
 import com.persist.util.tool.grab.VideoNotifierImpl;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.errors.InvalidTimestampException;
 import org.bytedeco.javacpp.opencv_core;
 import org.bytedeco.javacv.*;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.management.ManagementFactory;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Created by taozhiheng on 16-7-19.
+ * Created by taozhiheng on 16-10-31.
  *
  * this class should be invoked as a child process
  *
  * grab rtmp and write data to hdfs
  *
  */
-public class GrabThread extends Thread{
+public class GrabMain {
 
-    private final static String TAG = "Grab";
+    private final static String TAG = "GrabMain";
 
-    private final static String START_TIMEOUT_MSG = "start-timeout";
-    private final static String GRAB_TIMEOUT_MSG = "grabImage-timeout";
-    private final static String RESTART_TIMEOUT_MSG = "restart-timeout";
-
-//    private final static int FAIL_SECONDS = 5;
-//
-//    private final static long START_TIMEOUT = 8000;
-//    private final static long GRAB_TIMEOUT = 3000;
-//    private final static long RESTART_TIMEOUT = 8000;
-
-    private int mFailSeconds = 5;
-    private long mStartTimeout = 8000;
-    private long mGrabTimeout = 3000;
-    private long mRestartTimeout = 8000;
 
     private HDFSHelper mHelper;
     private String mUrl;
@@ -64,8 +47,8 @@ public class GrabThread extends Thread{
     //grab rate
     private double mGrabRate = 1.0;
 
-    private boolean mIsRunning;
-    private boolean mIsActive;
+    private boolean mIsRunning = true;
+    private boolean mIsActive = true;
 
     private int mCount = 0;
     private int mIndex = 0;
@@ -81,40 +64,10 @@ public class GrabThread extends Thread{
 
     private FileLogger mLogger;
 
-    private int retry = 0;
-
     private int failLimit = 10;
     private int sameLimit = 5;
 
-    private MessageListener mListener;
-
-    private ScheduledExecutorService mService;
-    private ScheduledFuture startFuture;
-    private ScheduledFuture grabFuture;
-    private ScheduledFuture restartFuture;
-    //timeout flag
-    boolean[] flags = new boolean[3];
-    //timeout task
-    private Runnable startRunnable = new Runnable() {
-        public void run() {
-            if(flags[0] && mListener != null)
-                mListener.handleMessage(GrabThread.this, START_TIMEOUT_MSG);
-        }
-    };
-    private Runnable grabRunnable = new Runnable() {
-        public void run() {
-            if(flags[1] && mListener != null)
-                mListener.handleMessage(GrabThread.this, GRAB_TIMEOUT_MSG);
-        }
-    };
-    private Runnable restartRunnable = new Runnable() {
-        public void run() {
-            if(flags[2] && mListener != null)
-                mListener.handleMessage(GrabThread.this, RESTART_TIMEOUT_MSG);
-        }
-    };
-
-    public GrabThread(String url, String dir, IVideoNotifier notifier, String topic, String brokerList, FileLogger logger)
+    public GrabMain(String url, String dir, IVideoNotifier notifier, String topic, String brokerList, FileLogger logger)
     {
         mUrl = url;
         mDir = dir;
@@ -149,22 +102,6 @@ public class GrabThread extends Thread{
             };
         }
         mGson = new Gson();
-
-    }
-
-    public FFmpegFrameGrabber getGrabber()
-    {
-        return mGrabber;
-    }
-
-    /**
-     *  start grab in a child thread
-     * */
-    @Override
-    public void run() {
-        mNotifier.prepare();
-//        startGrab();
-        grab();
     }
 
     /**
@@ -172,8 +109,6 @@ public class GrabThread extends Thread{
      * */
     private void grab()
     {
-        mIsRunning = true;
-        mIsActive = true;
 
         Frame frame = null;
         opencv_core.IplImage image = null;
@@ -202,21 +137,9 @@ public class GrabThread extends Thread{
             mLogger.log(mUrl, "prepare to start grabbing");
             mNotifier.notify("prepare to start grabbing video from "+mUrl);
 
-            //add timeout check
-            if(mService != null)
-            {
-                flags[0] = true;
-                startFuture = mService.schedule(startRunnable, mStartTimeout, TimeUnit.MILLISECONDS );
-            }
-            mGrabber.start();
-            flags[0] = false;
-            if(startFuture != null)
-            {
-                startFuture.cancel(true);
-            }
+
             double frameRate = mGrabber.getFrameRate();
-            failLimit = (int)(frameRate*mFailSeconds);
-            sameLimit = (int)(mGrabRate*mFailSeconds);
+
             grabStep = (int) (frameRate/mGrabRate);
             mLogger.log(mUrl, "finish starting, " +
                     "frameRate="+frameRate
@@ -227,8 +150,16 @@ public class GrabThread extends Thread{
                     +", frameLength=" + mGrabber.getLengthInFrames()
                     +", grabStep="+grabStep);
 
+            int frameIndex = 0;
+            int frameLength = 0;
+            //from video files
+            if(mUrl.startsWith("file://") || mUrl.startsWith("/"))
+            {
+                frameLength = mGrabber.getLengthInFrames();
+            }
+
             //start grabbing frames
-            while (mIsRunning)
+            while (mIsRunning && (frameLength <= 0 || frameIndex < frameLength))
             {
                 //check pause signal
                 if(!mIsActive)
@@ -246,19 +177,10 @@ public class GrabThread extends Thread{
                 mLogger.log(mUrl, "prepare to grab frame " + mCount+"/"+mIndex);
                 mNotifier.notify("prepare to grab frame " + mCount+"/"+mIndex);
                 try {
-                    if(mService != null)
-                    {
-                        mLogger.log(mUrl, "add timeout task grabImage");
-                        flags[1] = true;
-                        grabFuture = mService.schedule(grabRunnable, mGrabTimeout, TimeUnit.MILLISECONDS);
-                    }
+
                     frame = mGrabber.grabImage();
-                    flags[1] = false;
-                    if(grabFuture != null)
-                    {
-                        mLogger.log(mUrl, "cancel timeout task grabImage");
-                        grabFuture.cancel(true);
-                    }
+                    frameIndex++;
+
                     if(frame != null)
                     {
                         num++;
@@ -359,7 +281,7 @@ public class GrabThread extends Thread{
                     mLogger.log(mUrl, "write frame " + mCount+" to "+fileName+", "+res);
                     mNotifier.notify("write frame " + mCount+" to "+fileName+", "+res);
                     //send message to kafka
-                    pictureKey.url = mDir+File.separator+fileName;
+                    pictureKey.url = mDir+ File.separator+fileName;
                     pictureKey.video_id = mUrl;
                     pictureKey.time_stamp = String.valueOf(time);
                     if(mProducer != null)
@@ -417,8 +339,6 @@ public class GrabThread extends Thread{
      * */
     private void clear()
     {
-        cancelAllTimeout();
-
         if(mHelper != null)
         {
             mHelper.close();
@@ -431,72 +351,8 @@ public class GrabThread extends Thread{
             mProducer = null;
         }
 
-//        if(mNotifier != null)
-//        {
-//            mNotifier.stop();
-//            mNotifier = null;
-//        }
-//
-//        if(mLogger != null)
-//        {
-//            mLogger.close();
-//            mLogger = null;
-//        }
     }
 
-    public void cancelAllTimeout()
-    {
-        if(startFuture != null)
-        {
-            startFuture.cancel(true);
-        }
-        if(grabFuture != null)
-        {
-            grabFuture.cancel(true);
-        }
-        if(restartFuture != null)
-        {
-            restartFuture.cancel(true);
-        }
-    }
-
-    /**
-     * set thread index
-     * */
-    public void setRetry(int retry)
-    {
-        this.retry = retry;
-    }
-
-    public int retry()
-    {
-        retry++;
-        return retry;
-    }
-
-    public void setFailSeconds(int s)
-    {
-        if(s > 0)
-            mFailSeconds = s;
-    }
-
-    public void setStartTimeout(long timeout)
-    {
-        if(timeout > 0)
-            mStartTimeout = timeout;
-    }
-
-    public void setGrabTimeout(long timeout)
-    {
-        if(timeout > 0)
-            mGrabTimeout = timeout;
-    }
-
-    public void setRestartTimeout(long timeout)
-    {
-        if(timeout > 0)
-            mRestartTimeout = timeout;
-    }
 
     /**
      * start grabbing
@@ -509,13 +365,13 @@ public class GrabThread extends Thread{
             mGrabber.start();
             mNotifier.notify("start grabbing");
             mLogger.log(mUrl, "start grabbing");
+            grab();
             return true;
         } catch (FrameGrabber.Exception e) {
             e.printStackTrace(mLogger.getPrintWriter());
             mLogger.getPrintWriter().flush();
             return false;
         }
-
     }
 
     /**
@@ -527,19 +383,11 @@ public class GrabThread extends Thread{
         mIsRunning = true;
         mIsActive = true;
         try {
-            if(mService != null)
-            {
-                flags[2] = true;
-                restartFuture = mService.schedule(restartRunnable, mRestartTimeout, TimeUnit.MILLISECONDS);
-            }
+
             mLogger.log(mUrl, "stop grabbing");
             mNotifier.notify("stop grabbing");
             mGrabber.restart();
-            flags[2] = false;
-            if(restartFuture != null)
-            {
-                restartFuture.cancel(true);
-            }
+            grab();
             return true;
         } catch (FrameGrabber.Exception e) {
             e.printStackTrace(mLogger.getPrintWriter());
@@ -591,7 +439,7 @@ public class GrabThread extends Thread{
 
     public int getCount()
     {
-       return mCount;
+        return mCount;
     }
 
     public int getIndex()
@@ -604,151 +452,8 @@ public class GrabThread extends Thread{
         return mGrabRate;
     }
 
-    /**
-     * set grab rate, how many frames to be grab each second
-     * default value: 1f
-     * */
-    public void setGrabRate(double rate)
-    {
-        if(rate > 0)
-            mGrabRate = rate;
-    }
-
-    /**
-     * set output format like mp4
-     * It seems that the method needn't be invoked
-     * */
-    public void setOutputFormat(String outputFormat)
-    {
-        mGrabber.setFormat(outputFormat);
-    }
-
-    /**
-     * set output file name format like frame-%05d.png
-     * */
-    public void setNameFormat(String format)
-    {
-        this.mFormat = format;
-    }
-
-
-    /**
-     * set picture size
-     * */
-    public void setSize(int width, int height)
-    {
-        this.mWidth = width;
-        this.mHeight = height;
-    }
-
-    /**
-     * set schedule executor service
-     * */
-    public void setService(ScheduledExecutorService service)
-    {
-//        mService = service;
-    }
-
-    public void setListener(MessageListener l)
-    {
-//        this.mListener = l;
-    }
-
-    interface MessageListener
-    {
-        void handleMessage(Thread thread, String msg);
-    }
-
-    /**
-     * listen message
-     * the thread should run only if the process is a child process,
-     * otherwise there will be some IOExceptions.
-     * */
-    static class ListenThread extends Thread
-    {
-        private BufferedReader reader;
-        private String STOP;
-        private boolean run;
-
-        private GrabThread grabThread;
-
-        private MessageListener listener;
-
-        public ListenThread(BufferedReader reader, String stop)
-        {
-            this.reader = reader;
-            this.STOP = stop;
-            this.run = true;
-        }
-
-        public void setGrabThread(GrabThread t)
-        {
-            grabThread = t;
-        }
-
-        public void setListener(MessageListener l)
-        {
-            this.listener = l;
-        }
-
-        @Override
-        public void run() {
-
-            String msg;
-            while (run)
-            {
-                try {
-                    msg = reader.readLine();
-                    if(listener != null)
-                        listener.handleMessage(grabThread, msg);
-                    if(msg == null || STOP.equals(msg))
-                        break;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        public void stopListen()
-        {
-            this.run = false;
-        }
-    }
-
-    /**
-     * Note:
-     * this method contains some test values which should be modify and rebuilt
-     *
-     * the main method need at lease 7 arguments
-     * args[0] redis host
-     * args[1] redis port
-     * args[2] redis password
-     * args[3] video rtmp url
-     * args[4] hdfs absolute directory path (including ip or hostname)
-     * args[5] kafka topic to send message
-     * args[6] kafka brokerList to send message
-     * args[7] file name format [optional]
-     * */
-
-    static GrabThread createGrabThread(String url, String dir, IVideoNotifier notifier,
-                                       String topic, String brokerList, FileLogger logger,
-                                       double rate, int failSeconds, long startTimeout, long grabTimeout,
-                                       long restartTimeout, MessageListener listener, ScheduledExecutorService service)
-    {
-        GrabThread grabThread = new GrabThread(url, dir, notifier, topic, brokerList, logger);
-        grabThread.setGrabRate(rate);
-        grabThread.setFailSeconds(failSeconds);
-        grabThread.setStartTimeout(startTimeout);
-        grabThread.setGrabTimeout(grabTimeout);
-        grabThread.setRestartTimeout(restartTimeout);
-        grabThread.setListener(listener);
-        grabThread.setService(service);
-        return grabThread;
-    }
-
     public static void main(String[] args)
-     {
-
+    {
         if(args.length < 7)
             throw new RuntimeException("the main method of GrabThread need at lease 7 arguments");
         String host = args[0];
@@ -762,7 +467,8 @@ public class GrabThread extends Thread{
 
         String name = ManagementFactory.getRuntimeMXBean().getName();
         final String pid = name.split("@")[0];
-        final FileLogger logger = new FileLogger("GrabThread@"+pid);
+        final FileLogger logger = new FileLogger("GrabMain@"+pid);
+        logger.log(url, "args: "+ Arrays.toString(args));
 
         double rate = 1.0;
         if(args.length >= 8)
@@ -854,119 +560,89 @@ public class GrabThread extends Thread{
         final IVideoNotifier notifier = new VideoNotifierImpl(
                 host, port,
                 password, new String[]{url});
+        final GrabMain main = new GrabMain(url, dir, notifier, topic, brokerList, logger);
 
 
         //construct  listen thread
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        final ListenThread listenThread = new ListenThread(reader, VideoInfo.DEL);
-
-        final GrabThread[] threads = new GrabThread[retry];
-        //construct grabThread
-        final ScheduledExecutorService service = new ScheduledThreadPoolExecutor(5);
-        final MessageListener listener = new MessageListener()
-        {
-            public void handleMessage(Thread thread, String msg)
-            {
-                if (thread instanceof GrabThread)
-                {
-                    GrabThread t = (GrabThread) thread;
-                    //send message to report
-                    if (START_TIMEOUT_MSG.equals(msg)) {
-                        logger.log(url, "Start timeout "+t.mStartTimeout+".You'd better destroy the task, then start a new task.");
-                        notifier.notify("Start timeout "+t.mStartTimeout+".You'd better destroy the task, then start a new task.");
-                    } else if (GRAB_TIMEOUT_MSG.equals(msg)) {
-                        logger.log(url, "Grab timeout "+t.mGrabTimeout+".If it happened for many times, You'd better destroy the task, then start a new task.");
-                        notifier.notify("Grab timeout "+t.mGrabTimeout+".If it happened for many times, You'd better destroy the task, then start a new task.");
-                    } else if (RESTART_TIMEOUT_MSG.equals(msg)) {
-                        logger.log(url, msg + "Restart timeout "+t.mRestartTimeout+".You'd better destroy the task, then start a new task.");
-                        notifier.notify(msg + "Restart timeout "+t.mRestartTimeout+".You'd better destroy the task, then start a new task.");
-                    } else {
-                        logger.log(url, "Unknown timeout");
-                        notifier.notify("Unknown timeout");
-                    }
-                    //can retry
-                    int index = t.retry();
-                    if (index < threads.length)
-                    {
-                        t.cancelAllTimeout();
-                        t.interrupt();
-                        if (index - 1 >= 0)
-                            threads[index - 1] = null;
-                        logger.log(url, "Retry");
-                        notifier.notify("Retry");
-                        threads[index] = createGrabThread(
-                                url, dir, notifier,
-                                topic, brokerList, logger,
-                                grabRate, failSeconds, startTimeout,
-                                grabTimeout, restartTimeout, this, service);
-                        threads[index].setRetry(index);
-                        threads[index].start();
-                        //set listen thread
-                        listenThread.setGrabThread(threads[index]);
-                    } else
-                    {
-                        logger.log(url, "The grab task will be destroyed after "+retry+" retries, you can start a new task after repairing problems.");
-                        notifier.notify("The grab task will be destroyed after "+retry+" retries, you can start a new task after repairing problems.");
-                        notifier.stop();
-                        listenThread.stopListen();
-                        logger.log(url, "Child process: GrabThread  " + pid + " has exit");
-                        logger.close();
-                        System.exit(0);
-                    }
-                }
-            }
-        };
-        threads[0] = createGrabThread(
-                url, dir, notifier,
-                topic, brokerList, logger,
-                grabRate, failSeconds, startTimeout,
-                grabTimeout, restartTimeout, listener, service);
-        threads[0].setRetry(0);
-        //start grab thread
-        threads[0].start();
-        //set listen thread
-        listenThread.setGrabThread(threads[0]);
-        listenThread.setListener(new MessageListener() {
-            public void handleMessage(Thread thread, String msg) {
-                if(thread != null && thread instanceof GrabThread)
-                {
-                    GrabThread t = (GrabThread)thread;
-                    if (msg.equals(VideoInfo.DEL)) {
-                        t.stopGrab();
-                    } else if (msg.equals(VideoInfo.PAUSE)) {
-                        t.pauseGrab();
-                    } else if (msg.equals(VideoInfo.CONTINUE)) {
-                        t.continueGrab();
-                    }
-                }
-            }
-        });
+        ListenThread listenThread = new ListenThread(reader, VideoInfo.DEL);
         //start listen thread
-        if(brokerList != null && brokerList.length() > 2)
+        if(brokerList != null && brokerList.length() > 2) {
+            listenThread.setListener(new ListenThread.MessageListener() {
+                public void handleMessage(String msg) {
+                    if (msg.equals(VideoInfo.DEL)) {
+                        main.stopGrab();
+                    } else if (msg.equals(VideoInfo.PAUSE)) {
+                        main.pauseGrab();
+                    } else if (msg.equals(VideoInfo.CONTINUE)) {
+                        main.continueGrab();
+                    }
+                }
+            });
             listenThread.start();
-
+        }
         logger.log(url, "Child process: GrabThread is running in "+pid);
-        try
-        {
-            if(threads[0] != null)
-                threads[0].join();
-            if(threads[1] != null)
-                threads[1].join();
-            if(threads[2] != null)
-                threads[3].join();
-        } catch (InterruptedException e) {
-            e.printStackTrace(logger.getPrintWriter());
-            logger.getPrintWriter().flush();
-        }
-        finally {
-            listenThread.stopListen();
-            notifier.notify("Child process: GrabThread  " + pid + " has exit");
-            notifier.stop();
-            logger.log(url, "Child process: GrabThread  " + pid + " has exit");
-            logger.close();
-            System.exit(0);
-        }
+        main.startGrab();
+        listenThread.stopListen();
+        notifier.notify("Child process: GrabThread  " + pid + " has exit");
+        notifier.stop();
+        logger.log(url, "Child process: GrabThread  " + pid + " has exit");
+        logger.close();
+        System.exit(0);
     }
 
+    /**
+     * listen message
+     * the thread should run only if the process is a child process,
+     * otherwise there will be some IOExceptions.
+     * */
+    static class ListenThread extends Thread
+    {
+        private BufferedReader reader;
+        private String STOP;
+        private boolean run;
+
+        private MessageListener listener;
+
+        public interface MessageListener
+        {
+            void handleMessage(String msg);
+        }
+
+        public ListenThread(BufferedReader reader, String stop)
+        {
+            this.reader = reader;
+            this.STOP = stop;
+            this.run = true;
+        }
+
+        public void setListener(MessageListener l)
+        {
+            this.listener = l;
+        }
+
+        @Override
+        public void run() {
+
+            String msg;
+            while (run)
+            {
+                try {
+                    msg = reader.readLine();
+                    if(listener != null)
+                        listener.handleMessage(msg);
+                    if(msg == null || STOP.equals(msg))
+                        break;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        public void stopListen()
+        {
+            this.run = false;
+        }
+    }
 
 }
