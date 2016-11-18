@@ -175,4 +175,5 @@ batch_size: 1024
 gpu_id: 1
 ```
 > * 每个视频抓取子进程运行时会写日志文件，进程运行时，除了查看、不要对日志文件做其他操作(复制、移动、删除等)
-
+> * FFmpegFrameGrabber在抓取视频帧时不断会有标准输出和标准错误，如果以子进程的方式运行，需要在父进程不断取走标准输出和标准错误，否则FFmpegFrameGrabber.grabImage()可能会出现永远不返回的情况
+> * 关于运行使用的json配置文件，其中的字段后续可能不断有更新，具体内容可以查看src/main/java/com/persist/bean/目录下对应包内相关的XXXConfig.java文件

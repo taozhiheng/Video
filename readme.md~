@@ -62,8 +62,8 @@ $ bin/storm jar Video.jar com.persist.VideoAnalyzer analyzer_config.json topolog
 > * (227)width，int，图片识别标准宽度
 > * (227)height，int，图片识别标准高度
 > * (!)bufferSize，int，图片批量识别的标准数量
-> * (!)duration，long，两次图片识别最大时间间隔，单位是是是毫秒
-> * (1)keySpoutParallel，int，KafkaSpout
+> * (!)duration，long，两次图片识别最大时间间隔，单位是是是毫秒，主要在图像输入较少时减少等待缓冲区时间，尽快计算
+> * (1)keySpoutParallel，int，KafkaSpout并行度
 > * (3)resultBoltParallel，int，PictureResultBolt并行度
 > * (3)notifierBoltParallel，int，PictureNotifierBolt并行度
 > * (3)recorderBoltParallel，int，PictureRecorderBolt并行度
